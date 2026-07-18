@@ -6,7 +6,7 @@
     android:orientation="vertical">
 
     <!-- Toolbar -->
-    <io.agents.pokeclaw.widget.CommonToolbar
+    <com.sikoclaw.app.widget.CommonToolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="44dp" />
@@ -23,44 +23,44 @@
             android:paddingVertical="8dp">
 
             <!-- 权限分组 -->
-            <io.agents.pokeclaw.widget.MenuGroup
+            <com.sikoclaw.app.widget.MenuGroup
                 android:id="@+id/permissionsGroup"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp" />
 
             <!-- 模型分组 -->
-            <io.agents.pokeclaw.widget.MenuGroup
+            <com.sikoclaw.app.widget.MenuGroup
                 android:id="@+id/modelGroup"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content" />
 
             <!-- Appearance -->
-            <io.agents.pokeclaw.widget.MenuGroup
+            <com.sikoclaw.app.widget.MenuGroup
                 android:id="@+id/appearanceGroup"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content" />
 
             <!-- Tools -->
-            <io.agents.pokeclaw.widget.MenuGroup
+            <com.sikoclaw.app.widget.MenuGroup
                 android:id="@+id/toolsGroup"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content" />
 
             <!-- Remote Control -->
-            <io.agents.pokeclaw.widget.MenuGroup
+            <com.sikoclaw.app.widget.MenuGroup
                 android:id="@+id/remoteGroup"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content" />
 
             <!-- About -->
-            <io.agents.pokeclaw.widget.MenuGroup
+            <com.sikoclaw.app.widget.MenuGroup
                 android:id="@+id/aboutGroup"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content" />
 
             <!-- 通道分组 (hidden) -->
-            <io.agents.pokeclaw.widget.MenuGroup
+            <com.sikoclaw.app.widget.MenuGroup
                 android:id="@+id/channelGroup"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

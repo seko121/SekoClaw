@@ -1,4 +1,4 @@
-# PokeClaw AI Index
+# Siko Claw AI Index
 
 This is the repo map for coding agents. Keep canonical information in existing files; do not create new root docs when one of these files already owns the topic.
 
@@ -19,7 +19,7 @@ This is the repo map for coding agents. Keep canonical information in existing f
 
 | Path | Purpose |
 |------|---------|
-| `app/src/main/java/io/agents/pokeclaw/` | Android app source |
+| `app/src/main/java/io/agents/sikoclaw/` | Android app source |
 | `app/src/main/assets/playbooks/` | Built-in playbooks used by the agent harness |
 | `app/src/test/` | JVM/unit regression tests |
 | `scripts/` | QA and automation scripts |
@@ -34,7 +34,7 @@ This is the repo map for coding agents. Keep canonical information in existing f
 
 ## Direction Rules
 
-- PokeClaw is a generic Android mobile-agent harness with a product shell on top.
+- Siko Claw is a generic Android mobile-agent harness with a product shell on top.
 - Prefer fixing deterministic harness/runtime/device problems before tuning one stochastic task.
 - Keep prompts, tools, skills, and playbooks generic.
 - Treat Cloud/Local exploratory task success as a repeated-trial metric, not a single-run truth.

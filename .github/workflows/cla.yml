@@ -29,7 +29,7 @@ jobs:
           allowlist: bot*
 
           custom-notsigned-prcomment: |
-            Thank you for your contribution to PokeClaw!
+            Thank you for your contribution to Siko Claw!
 
             Before we can merge this PR, please sign our [Contributor License Agreement](https://github.com/agents-io/PokeClaw/blob/main/CLA.md).
 

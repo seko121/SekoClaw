@@ -1,6 +1,6 @@
 # Community Issue Reply Templates (v0.7.0 cycle)
 
-> Ready-to-paste replies for the 6 OEM-specific open issues PokeClaw cannot
+> Ready-to-paste replies for the 6 OEM-specific open issues Siko Claw cannot
 > reproduce in-house (Pixel + one Xiaomi Redmi only).
 >
 > These are **drafts** — Nicole's call to actually post. Each one is tuned for

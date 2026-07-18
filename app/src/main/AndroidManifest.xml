@@ -38,14 +38,14 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/Theme.PokeClaw">
+        android:theme="@style/Theme.SikoClaw">
 
         <!-- 启动页 -->
         <activity
             android:name=".ui.splash.SplashActivity"
             android:exported="true"
             android:screenOrientation="portrait"
-            android:theme="@style/Theme.PokeClaw.Splash">
+            android:theme="@style/Theme.SikoClaw.Splash">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -70,6 +70,10 @@
             android:name=".ui.settings.SettingsActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
+        <activity
+            android:name=".ui.settings.AgentFeaturesActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
         <activity
             android:name=".ui.settings.LlmConfigActivity"
             android:exported="false"
@@ -96,8 +100,8 @@
             android:noHistory="true"
             android:theme="@style/Theme.Transparent">
             <intent-filter>
-                <action android:name="io.agents.pokeclaw.RUN_TASK" />
-                <action android:name="io.agents.pokeclaw.RUN_CHAT" />
+                <action android:name="com.sikoclaw.app.RUN_TASK" />
+                <action android:name="com.sikoclaw.app.RUN_CHAT" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
@@ -106,7 +110,7 @@
             android:name=".debug.DebugTaskReceiver"
             android:exported="true">
             <intent-filter>
-                <action android:name="io.agents.pokeclaw.DEBUG_TASK" />
+                <action android:name="com.sikoclaw.app.DEBUG_TASK" />
             </intent-filter>
         </receiver>
 
@@ -114,8 +118,8 @@
             android:name=".automation.ExternalAutomationReceiver"
             android:exported="true">
             <intent-filter>
-                <action android:name="io.agents.pokeclaw.RUN_TASK" />
-                <action android:name="io.agents.pokeclaw.RUN_CHAT" />
+                <action android:name="com.sikoclaw.app.RUN_TASK" />
+                <action android:name="com.sikoclaw.app.RUN_CHAT" />
             </intent-filter>
         </receiver>
 
@@ -173,13 +177,14 @@
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
             </intent-filter>
         </receiver>
+        <receiver android:name=".cron.CronReceiver" android:exported="false" />
 
         <!-- Debug: trigger tasks via ADB broadcast -->
         <receiver
             android:name=".debug.TaskTriggerReceiver"
             android:exported="true">
             <intent-filter>
-                <action android:name="io.agents.pokeclaw.TASK" />
+                <action android:name="com.sikoclaw.app.TASK" />
             </intent-filter>
         </receiver>
 

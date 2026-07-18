@@ -132,7 +132,7 @@ jobs:
             --num-flaky-test-attempts=0 \
             --no-record-video \
             --no-performance-metrics \
-            --results-history-name "pokeclaw-smoke-${{ github.ref_name }}" \
+            --results-history-name "sikoclaw-smoke-${{ github.ref_name }}" \
             || (echo "::error::FTL smoke FAILED"; exit 1)
           echo "::endgroup::"
 

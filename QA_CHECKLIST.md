@@ -1,4 +1,4 @@
-# PokeClaw E2E QA Checklist
+# Siko Claw E2E QA Checklist
 
 Every build must pass ALL checks before shipping.
 
@@ -16,7 +16,7 @@ Every test in this checklist has an implicit build-type requirement. When adding
 | Tag | Meaning | Why it matters |
 |---|---|---|
 | `[RELEASE-OK]` | Runs against either debug or signed-release APK. Default. | Most UI / persistence / smoke tests. |
-| `[DEBUG-ONLY]` | Requires `adb shell run-as io.agents.pokeclaw` or any other path that needs `debuggable=true`. | Release builds set `android:debuggable=false`; `run-as` returns `package not debuggable`. MMKV file inspection, on-device file dumps, AppLogStore raw reads all fall here. Use force-stop survival + Settings UI as the release-build substitute. |
+| `[DEBUG-ONLY]` | Requires `adb shell run-as com.sikoclaw.app` or any other path that needs `debuggable=true`. | Release builds set `android:debuggable=false`; `run-as` returns `package not debuggable`. MMKV file inspection, on-device file dumps, AppLogStore raw reads all fall here. Use force-stop survival + Settings UI as the release-build substitute. |
 | `[LOGCAT-DEBUG]` | Looks for `XLog.i` / `XLog.d` lines in `adb logcat`. | Release builds gate these on `BuildConfig.DEBUG=false` so they never reach logcat. AppLogStore still captures `XLog.i` for the debug-report.zip even in release. Use the debug-report.zip path for release-build log verification. |
 | `[LLM-CLOUD]` | Needs a configured cloud LLM API key. | Tasks like M-section, R/S exploratory, W7/W8 PromptUtils injection trace. |
 | `[LLM-LOCAL]` | Needs a downloaded local model (Gemma E2B or E4B). | LQ tests, local task smoke, GPU/CPU verified-healthy paths. |
@@ -29,7 +29,7 @@ Tag combinations are allowed — `[RELEASE-OK] [LLM-CLOUD]` means "works on sign
 
 CLAUDE.md says: full QA triggers before any release/version bump. v0.7.0 violated this gate (QA was run after tag). To make the gate physically present in this checklist, do the following EVERY release, IN ORDER:
 
-1. **Local signed APK first.** Run `assembleRelease` locally with the keystore env sourced from `~/.config/pokeclaw/release-signing.env`. The resulting `app/build/outputs/apk/release/PokeClaw_vX.Y.Z_*.apk` is the artifact under test. Do NOT use the debug APK for release-gate QA.
+1. **Local signed APK first.** Run `assembleRelease` locally with the keystore env sourced from `~/.config/sikoclaw/release-signing.env`. The resulting `app/build/outputs/apk/release/Siko Claw_vX.Y.Z_*.apk` is the artifact under test. Do NOT use the debug APK for release-gate QA.
 2. **Install over the previous signed public APK** to verify in-place upgrade. If the upgrade fails (e.g., signing key changed), STOP — fix the upgrade story before tagging.
 3. **Run sections [RELEASE-OK]** of the new/changed feature areas (V/W/X/Y for v0.7.0-style batches). Record PASS/FAIL in the QA Debug Changelog under a draft `vX.Y.Z` heading.
 4. **Run Refactor Regression Bundles** matching the changed code areas.
@@ -100,36 +100,36 @@ Never claim "fixed" from a single green run on a stochastic Cloud workflow.
 adb devices -l
 
 # 2. Install APK
-cd /home/nicole/MyGithub/PokeClaw
+cd /home/nicole/MyGithub/Siko Claw
 ./gradlew assembleDebug
 APK=$(find app/build/outputs/apk/debug/ -name "*.apk" | head -1)
 adb install -r "$APK"
 
 # 3. Launch app
-adb shell am start -n io.agents.pokeclaw/io.agents.pokeclaw.ui.splash.SplashActivity
+adb shell am start -n com.sikoclaw.app/com.sikoclaw.app.ui.splash.SplashActivity
 sleep 5
 
 # 4. Enable accessibility (if not already)
 CURRENT=$(adb shell settings get secure enabled_accessibility_services)
-[[ "$CURRENT" != *"io.agents.pokeclaw"* ]] && \
+[[ "$CURRENT" != *"com.sikoclaw.app"* ]] && \
   adb shell settings put secure enabled_accessibility_services \
-  "$CURRENT:io.agents.pokeclaw/io.agents.pokeclaw.service.ClawAccessibilityService"
+  "$CURRENT:com.sikoclaw.app/com.sikoclaw.app.service.ClawAccessibilityService"
 
 # 5. Grant permissions
-adb shell pm grant io.agents.pokeclaw android.permission.READ_CONTACTS
+adb shell pm grant com.sikoclaw.app android.permission.READ_CONTACTS
 ```
 
 ### Configure LLM via ADB
 
 ```bash
 # Cloud LLM
-source /home/nicole/MyGithub/PokeClaw/.env
-adb shell "am broadcast -a io.agents.pokeclaw.DEBUG_TASK -p io.agents.pokeclaw \
+source /home/nicole/MyGithub/Siko Claw/.env
+adb shell "am broadcast -a com.sikoclaw.app.DEBUG_TASK -p com.sikoclaw.app \
   --es task 'config:' --es api_key '$OPENAI_API_KEY' --es model_name 'gpt-4.1'"
 
 # Local LLM
-MODEL_PATH="/storage/emulated/0/Android/data/io.agents.pokeclaw/files/models/gemma-4-E2B-it.litertlm"
-adb shell "am broadcast -a io.agents.pokeclaw.DEBUG_TASK -p io.agents.pokeclaw \
+MODEL_PATH="/storage/emulated/0/Android/data/com.sikoclaw.app/files/models/gemma-4-E2B-it.litertlm"
+adb shell "am broadcast -a com.sikoclaw.app.DEBUG_TASK -p com.sikoclaw.app \
   --es task 'config:' --es provider 'LOCAL' --es base_url '$MODEL_PATH' --es model_name 'gemma4-e2b'"
 ```
 
@@ -137,7 +137,7 @@ adb shell "am broadcast -a io.agents.pokeclaw.DEBUG_TASK -p io.agents.pokeclaw \
 
 ```bash
 # Cloud quick tasks
-cd /home/nicole/MyGithub/PokeClaw
+cd /home/nicole/MyGithub/Siko Claw
 ./scripts/e2e-quick-tasks.sh cloud
 
 # Local quick tasks
@@ -151,7 +151,7 @@ The runner emits `PASS / FAIL / BLOCKED / TIMEOUT` and writes a timestamped log 
 ```bash
 # IMPORTANT: wrap the task string in single quotes INSIDE adb shell double quotes
 adb logcat -c
-adb shell "am broadcast -a io.agents.pokeclaw.DEBUG_TASK -p io.agents.pokeclaw \
+adb shell "am broadcast -a com.sikoclaw.app.DEBUG_TASK -p com.sikoclaw.app \
   --es task 'how much battery left'"
 ```
 
@@ -159,20 +159,20 @@ adb shell "am broadcast -a io.agents.pokeclaw.DEBUG_TASK -p io.agents.pokeclaw \
 
 ```bash
 # Launch ComposeChatActivity through the debug receiver and inject a chat message
-adb shell "am broadcast -a io.agents.pokeclaw.TASK -p io.agents.pokeclaw \
+adb shell "am broadcast -a com.sikoclaw.app.TASK -p com.sikoclaw.app \
   --es chat 'read my clipboard and explain what it says'"
 ```
 
 Use this when you need a fast chatroom-bridge verification but do not trust raw ADB tap coordinates.
 It should create a visible user bubble, wait for the backend reply, and render the assistant bubble in the same conversation.
-On Android 15+, make sure PokeClaw is already in the foreground first; otherwise the system may block the receiver from bringing the chat activity forward for UI-visible verification.
+On Android 15+, make sure Siko Claw is already in the foreground first; otherwise the system may block the receiver from bringing the chat activity forward for UI-visible verification.
 
 ### Read Results from Logcat
 
 ```bash
 # Wait for task to complete (Cloud ~10s, Local ~60-120s per round)
 sleep 15
-PID=$(adb shell pidof io.agents.pokeclaw)
+PID=$(adb shell pidof com.sikoclaw.app)
 
 # Check which tools were called + final answer
 adb logcat -d | grep "$PID" | grep -E "onToolCall|onComplete" | head -10
@@ -187,7 +187,7 @@ For each M test, check:
 1. **Correct tool called** — e.g., "how much battery" should call `get_device_info(battery)`, NOT open Settings
 2. **Actual data in answer** — "73%, not charging, 32°C" NOT "I checked the battery"
 3. **Rounds** — system queries should be 2 rounds, complex tasks 5-15
-4. **Auto-return** — after task, PokeClaw chatroom should come back to foreground
+4. **Auto-return** — after task, Siko Claw chatroom should come back to foreground
 5. **Graceful failure** — if task can't complete, clear error message (not stuck/loop)
 6. **Env-dependent quick tasks** — if a sample contact/app is missing on this device, require the correct tool + a graceful failure; literal send/call success should be marked `BLOCKED`, not product `FAIL`
 
@@ -203,7 +203,7 @@ for node in root.iter():
     text = node.get('text', '')
     desc = node.get('content-desc', '')
     pkg = node.get('package', '')
-    if (text or desc) and 'pokeclaw' in pkg.lower():
+    if (text or desc) and 'sikoclaw' in pkg.lower():
         print(f'text={text!r} desc={desc!r}')
 "
 ```
@@ -290,7 +290,7 @@ root = ET.fromstring(sys.stdin.read())
 for node in root.iter():
     text = node.get('text', '')
     pkg = node.get('package', '')
-    if text and 'pokeclaw' in pkg.lower() and ('battery' in text.lower() or '%' in text):
+    if text and 'sikoclaw' in pkg.lower() and ('battery' in text.lower() or '%' in text):
         print(f'FOUND RESPONSE: {text!r}')
 "
 # Should find: "Battery: 73%, not charging, 32°C" or similar in a chat bubble
@@ -328,7 +328,7 @@ Test device and artifact state:
 - Installed test build: `0.6.8` debug APK, upgraded in place over the existing
   debug-signed `0.6.7` install
 - Stable release APK upgrade attempt: **BLOCKED**. `adb install -r
-  app/build/outputs/apk/release/PokeClaw_v0.6.8_20260428_112909.apk` failed with
+  app/build/outputs/apk/release/Siko Claw_v0.6.8_20260428_112909.apk` failed with
   `INSTALL_FAILED_UPDATE_INCOMPATIBLE` because the installed `0.6.7` package is
   debug-signed and the `0.6.8` release APK is signed by the stable release cert
   (`e000d1d6555b8fab20c03a5d9ddeba83944f26eecf0b978ac7affc2eebd43186`)
@@ -342,7 +342,7 @@ Test device and artifact state:
   release/CI signing path or after restoring local signing secrets.
 
 Cloud quick-task sweep after fixes:
-- Command: `RESULTS_FILE=/tmp/pokeclaw-v068-cloud-quick-20260428-1337-after-wa-fix.log
+- Command: `RESULTS_FILE=/tmp/sikoclaw-v068-cloud-quick-20260428-1337-after-wa-fix.log
   CLOUD_MODEL_NAME=gpt-4.1 ./scripts/e2e-quick-tasks.sh cloud`
 - Result: **17 PASS / 0 FAIL / 1 BLOCKED / 2 TIMEOUT / 20 TOTAL**
 - Passed: Reddit search, YouTube search, Telegram/Play Store path, Twitter
@@ -520,7 +520,7 @@ Copy this block into the current coverage snapshot or QA debug changelog for eve
 - [x] Scope gate: zero per-app prompt hacks; voice input is system `RecognizerIntent`, prompt injection is the same `applyGlobalPrompt` helper at every prompt construction site.
 - [x] Unit/compile gate: `./gradlew assembleDebug` passes; `assembleRelease` runs via GitHub Actions on the v0.7.0 tag.
 - [x] Script hygiene gate: no shell script changes in this batch.
-- [x] Artifact gate: tag-triggered Actions release workflow produced signed APK `PokeClaw_v0.7.0_20260526_101139.apk`, SHA-256 `ceb993fe014865912e4db72c328497807626d0f5ece5b8254b70946e1c62f3b0` (matches `SHA256SUMS.txt`).
+- [x] Artifact gate: tag-triggered Actions release workflow produced signed APK `Siko Claw_v0.7.0_20260526_101139.apk`, SHA-256 `ceb993fe014865912e4db72c328497807626d0f5ece5b8254b70946e1c62f3b0` (matches `SHA256SUMS.txt`).
 - [x] Targeted regression gate: V1/V2/V5 + W1-W6 + X1-X8 + J1-J3 rerun on signed release APK.
 - [x] Device smoke gate: Pixel 8 Pro Android 16 — install signed v0.6.12 → in-place upgrade to signed v0.7.0 (same keystore, no uninstall), cold launch + no FATAL, settings rows visible, mic launches Google Speech, MMKV persistence survives force-stop. Documented in QA Debug Changelog 2026-05-26.
 - [x] Distribution gate: GitHub release `v0.7.0` published with signed APK + `SHA256SUMS.txt`; in-place upgrade from v0.6.12 verified.
@@ -535,14 +535,14 @@ Copy this block into the current coverage snapshot or QA debug changelog for eve
 ### Release Gate Record — v0.6.12 (2026-04-30)
 
 - [x] Direction gate: follows README Product Direction / Roadmap / Known platform constraints; this release adds a generic external automation harness slot instead of a one-off task prompt.
-- [x] Harness gate: production external automation activity/receiver entries are user-enabled, targeted to the PokeClaw package, and route through normal task/chat harness rules.
+- [x] Harness gate: production external automation activity/receiver entries are user-enabled, targeted to the Siko Claw package, and route through normal task/chat harness rules.
 - [x] Scope gate: no prompt/skill/playbook one-off was added solely to make a flaky task pass.
 - [x] Unit/compile gate: `./gradlew testDebugUnitTest assembleDebug` passed.
 - [x] Script hygiene gate: `bash -n scripts/e2e-quick-tasks.sh && git diff --check` passed.
-- [x] Artifact gate: local debug artifact built; tag-triggered GitHub Actions release workflow produced signed APK `PokeClaw_v0.6.12_20260430_174625.apk`, SHA-256 `62d9dbb1cc00299892ec0ba229b128d4be018caba589c5a15429ea500c8b8fbe`.
+- [x] Artifact gate: local debug artifact built; tag-triggered GitHub Actions release workflow produced signed APK `Siko Claw_v0.6.12_20260430_174625.apk`, SHA-256 `62d9dbb1cc00299892ec0ba229b128d4be018caba589c5a15429ea500c8b8fbe`.
 - [x] Targeted regression gate: `ExternalAutomationContractTest` covers task/chat parsing, base64 payloads, callback metadata, unknown action rejection, and missing payload rejection.
 - [x] Device smoke gate: Pixel 8 Pro MacroDroid `Send Intent` E2E uses the exported Activity target on modern Android; debug and signed v0.6.12 Activity-target E2E passed.
-- [x] Distribution gate: GitHub release `v0.6.12` published with signed APK `PokeClaw_v0.6.12_20260430_174625.apk`, SHA-256 `62d9dbb1cc00299892ec0ba229b128d4be018caba589c5a15429ea500c8b8fbe`.
+- [x] Distribution gate: GitHub release `v0.6.12` published with signed APK `Siko Claw_v0.6.12_20260430_174625.apk`, SHA-256 `62d9dbb1cc00299892ec0ba229b128d4be018caba589c5a15429ea500c8b8fbe`.
 - [x] User-followup gate: affected GitHub/Reddit users should be pointed to v0.6.12 for External Automation / MacroDroid / direct-device task retesting.
 - Known misses:
   - `BLOCKED`: Tasker-specific E2E is blocked by Play Store purchase requirement on the QA phone; MacroDroid E2E is verified.
@@ -559,7 +559,7 @@ Copy this block into the current coverage snapshot or QA debug changelog for eve
 - [x] Artifact gate: `./gradlew assembleDebug` passed; signed release workflow `25084344165` passed
 - [x] Targeted regression gate: `LocalModelManagerTest` covers external dir creation, blocked external path, external write-probe fallback, and missing external root fallback
 - [ ] Device smoke gate: blocked on the exact Xiaomi/custom-ROM repro device; #39 reporter has been asked to retest v0.6.10 and attach a fresh bug ZIP
-- [x] Distribution gate: GitHub release `v0.6.10` published with signed APK `PokeClaw_v0.6.10_20260429_001417.apk`, SHA-256 `1cdc95d13dc6bbecad5ad7fe1cf17a9d6b0e92e4b3e2ebb674fc3d62a2a3ca02`, plus `SHA256SUMS.txt`
+- [x] Distribution gate: GitHub release `v0.6.10` published with signed APK `Siko Claw_v0.6.10_20260429_001417.apk`, SHA-256 `1cdc95d13dc6bbecad5ad7fe1cf17a9d6b0e92e4b3e2ebb674fc3d62a2a3ca02`, plus `SHA256SUMS.txt`
 - [x] User-followup gate: follow-up comments posted to #39, #17, #29, and #23
 - Known misses:
   - `BLOCKED`: exact Xiaomi/custom-ROM model-download repro still requires reporter retest
@@ -584,7 +584,7 @@ Do **not** rerun the entire world after every refactor. Rerun the right bundle f
   - `Q3-1`
   - `Q7-7`
   - `Q8-1`, `Q8-2`, `Q8-3`, `Q8-4`
-  - one persisted markdown-history spot check for `<!-- pokeclaw:timestamp=... -->`
+  - one persisted markdown-history spot check for `<!-- sikoclaw:timestamp=... -->`
 - **Cloud task-context handoff changes**
   - `Q2-1`, `Q2-2`, `Q7-7`
   - `Q8-1`, `Q8-3`
@@ -639,11 +639,11 @@ When in doubt, rerun the smaller bundle first, then expand only if something dri
 - [ ] For monitor QA, an external sender path is available:
   - WhatsApp: second phone / second WhatsApp account
   - Telegram notification monitor: second Telegram account or a Telegram bot token + already-started bot chat on this device
-  - Telegram bot remote-control channel: Telegram bot token configured in PokeClaw, bot polling connected, and this handset's Telegram account able to send `/start` plus a task to the bot
+  - Telegram bot remote-control channel: Telegram bot token configured in Siko Claw, bot polling connected, and this handset's Telegram account able to send `/start` plus a task to the bot
 - [ ] For external automation QA, Tasker/MacroDroid or an equivalent explicit Activity/Broadcast intent sender is available:
   - the test must run against a release build once the production receiver exists
   - MacroDroid/Tasker-style app automation should prefer the exported Activity target on modern Android because background broadcast receivers can be blocked from opening an Activity
-  - debug-only `io.agents.pokeclaw.TASK` / `DEBUG_TASK` receivers are not enough for public integration claims
+  - debug-only `com.sikoclaw.app.TASK` / `DEBUG_TASK` receivers are not enough for public integration claims
 - [ ] For missed-call QA, an external caller path is available:
   - second phone / second SIM / VoIP caller that can place a real call to this handset
   - one follow-up route already configured
@@ -651,7 +651,7 @@ When in doubt, rerun the smaller bundle first, then expand only if something dri
 
 ### Monitor QA Sender Rules
 
-- WhatsApp and Telegram monitor tests are only `PASS` when a real external sender delivers a message to this phone and PokeClaw reacts.
+- WhatsApp and Telegram monitor tests are only `PASS` when a real external sender delivers a message to this phone and Siko Claw reacts.
 - If the app logic is ready but there is no sender available, mark the case `BLOCKED`, not `FAIL`.
 - For Telegram bot QA, the bot must already have an open chat with this handset; Telegram bots cannot cold-DM a user who never started the bot.
 - If the Telegram account is frozen/read-only and cannot send messages or take actions, mark Telegram bot E2E as `BLOCKED`, not `FAIL`.
@@ -681,33 +681,33 @@ When in doubt, rerun the smaller bundle first, then expand only if something dri
 
 ## C. Cloud LLM — Monitor Workflow
 
-- [ ] **C1. Start monitor**: "monitor Girlfriend on WhatsApp" → top bar shows "Monitoring: Girlfriend" → user stays in PokeClaw chat (no Home press)
+- [ ] **C1. Start monitor**: "monitor Girlfriend on WhatsApp" → top bar shows "Monitoring: Girlfriend" → user stays in Siko Claw chat (no Home press)
 - [ ] **C1-b. Monitor dialog honors chosen app**: open Monitor dialog → choose `Telegram` (or another supported app) → start monitor → top bar / stop shell show `... on Telegram`, not `... on WhatsApp`
 - [ ] **C2. Auto-reply triggers**: Girlfriend sends message → notification caught → WhatsApp opens → reads context → Cloud LLM generates reply → reply sent
 - [ ] **C3. Stop monitor**: tap top bar → expand → Stop → monitoring stops
-- [ ] **C4. Start Telegram monitor**: "monitor NicoleBot on Telegram" → top bar shows "Monitoring: NicoleBot" → user stays in PokeClaw chat
+- [ ] **C4. Start Telegram monitor**: "monitor NicoleBot on Telegram" → top bar shows "Monitoring: NicoleBot" → user stays in Siko Claw chat
 - [ ] **C5. Telegram auto-reply triggers**: external Telegram sender / bot sends message → notification caught → Telegram opens → reads context → Cloud LLM generates reply → reply sent
 - [ ] **C6. Stop Telegram monitor**: tap top bar → expand → Stop → Telegram monitoring stops without affecting WhatsApp monitors
 
 ## C2. Background Call Follow-Up
 
 - [ ] **C7. Missed-call follow-up arms cleanly**: enable the missed-call auto follow-up workflow for a chosen person/number/channel → app shows clear in-chat status of what is armed
-- [ ] **C8. Real missed call triggers follow-up**: external caller rings this handset, the call is missed, and PokeClaw sends the configured follow-up message to that caller through the chosen channel
-- [ ] **C9. Missed-call result is visible in chatroom**: after the follow-up fires, the same PokeClaw conversation shows a clear status/result bubble instead of hiding the action purely in background state
+- [ ] **C8. Real missed call triggers follow-up**: external caller rings this handset, the call is missed, and Siko Claw sends the configured follow-up message to that caller through the chosen channel
+- [ ] **C9. Missed-call result is visible in chatroom**: after the follow-up fires, the same Siko Claw conversation shows a clear status/result bubble instead of hiding the action purely in background state
 - [ ] **C10. Wrong caller does not trigger**: a different number/contact calls and is missed → no follow-up is sent for the protected target workflow
 - [ ] **C11. SMS-first path stays API-first**: when the follow-up channel is SMS, the implementation should use an Android-native send path rather than accessibility-driven UI navigation
 
 ## C3. Remote Control Channels & External Automation
 
 - [ ] **C12. Telegram bot token config**: Settings → Remote Control → Telegram Bot → enter token → Save → Settings shows `Connected`; token is not printed in logs, screenshots, bug ZIPs, or QA notes
-- [ ] **C13. Telegram bot polling receives message**: user starts the bot from Telegram and sends a simple task → PokeClaw logcat shows Telegram update received and dispatches it through `ChannelManager`
-- [ ] **C14. Telegram bot reply path**: after a bot task completes or fails, PokeClaw sends a Telegram reply to the same chat id with a visible success/failure message
+- [ ] **C13. Telegram bot polling receives message**: user starts the bot from Telegram and sends a simple task → Siko Claw logcat shows Telegram update received and dispatches it through `ChannelManager`
+- [ ] **C14. Telegram bot reply path**: after a bot task completes or fails, Siko Claw sends a Telegram reply to the same chat id with a visible success/failure message
 - [ ] **C15. Telegram bot blocked account handling**: if the handset Telegram account is frozen/read-only, record `BLOCKED` with the Telegram system message and do not claim channel failure
 - [ ] **C16. Production intent task entrypoint**: with `Settings -> Remote Control -> External Automation = Enabled`, a Tasker/MacroDroid-style explicit Activity intent or compatible targeted broadcast starts the requested task in a release build:
-  `adb shell am start -n io.agents.pokeclaw/.automation.ExternalAutomationActivity -a io.agents.pokeclaw.RUN_TASK --es task "how much battery left"`
+  `adb shell am start -n com.sikoclaw.app/.automation.ExternalAutomationActivity -a com.sikoclaw.app.RUN_TASK --es task "how much battery left"`
 - [ ] **C17. Production intent chat entrypoint**: targeted broadcast with `chat` opens/uses the chatroom path without bypassing safety rules:
-  `adb shell am broadcast -a io.agents.pokeclaw.RUN_CHAT -p io.agents.pokeclaw --es chat "say hi"`
-- [ ] **C18. Production intent callback**: when `request_id` and `return_action` are provided, PokeClaw broadcasts `accepted` immediately and terminal `completed` / `failed` / `cancelled` / `blocked` / `rejected` results back to the caller
+  `adb shell am broadcast -a com.sikoclaw.app.RUN_CHAT -p com.sikoclaw.app --es chat "say hi"`
+- [ ] **C18. Production intent callback**: when `request_id` and `return_action` are provided, Siko Claw broadcasts `accepted` immediately and terminal `completed` / `failed` / `cancelled` / `blocked` / `rejected` results back to the caller
 - [ ] **C19. External automation safety**: an Intent payload cannot override platform safety rules, tool contracts, or user global instructions
 
 ## D. Local LLM — Chat
@@ -733,8 +733,8 @@ When in doubt, rerun the smaller bundle first, then expand only if something dri
 
 ## G. Empty State (v9 design)
 
-- [ ] **G1. Cloud empty state**: PokeClaw icon + "PokeClaw" + "Cloud AI" subtitle + "Chat and tasks work together" hint + 3 prompts (Tokyo, birthday, WhatsApp)
-- [ ] **G2. Local empty state**: PokeClaw icon + "PokeClaw" + "Local AI" subtitle + hint with bold 💬 Chat / 🤖 Task + 3 prompts (joke, what can you do, email)
+- [ ] **G1. Cloud empty state**: Siko Claw icon + "Siko Claw" + "Cloud AI" subtitle + "Chat and tasks work together" hint + 3 prompts (Tokyo, birthday, WhatsApp)
+- [ ] **G2. Local empty state**: Siko Claw icon + "Siko Claw" + "Local AI" subtitle + hint with bold 💬 Chat / 🤖 Task + 3 prompts (joke, what can you do, email)
 - [ ] **G3. Cloud prompt tap**: tap prompt → fills input, stays in chat (no mode switch)
 - [ ] **G4. Local prompt tap**: tap prompt → fills input, does NOT switch to Task mode (prompts are chat prompts)
 - [ ] **G5. Tab switch updates empty state**: switch Local↔Cloud tab → subtitle, hint, and prompts all change immediately
@@ -761,7 +761,7 @@ When in doubt, rerun the smaller bundle first, then expand only if something dri
 ## I. Cross-App Behavior
 
 - [ ] **I1. Floating button visible in other apps**: start task → agent navigates to WhatsApp/YouTube → floating button visible on top
-- [ ] **I2. Return to PokeClaw mid-task**: while task runs in WhatsApp → press recents → tap PokeClaw → see task progress + stop button
+- [ ] **I2. Return to Siko Claw mid-task**: while task runs in WhatsApp → press recents → tap Siko Claw → see task progress + stop button
 - [ ] **I3. Notification during task**: incoming notification while task runs → task not disrupted
 
 ## M. Cloud LLM — Complex Tasks (50 cases)
@@ -867,19 +867,19 @@ Design principle: User perspective. INFO tasks → report actual data. ACTION ta
 - [ ] **S4. "What's on my screen right now?"**: get_screen_info → describes UI elements (M6 verified)
 - [ ] **S5. "Copy latest email subject and Google it"**: notifications → clipboard → Chrome → search (M33)
 - [ ] **S6. "Check latest WhatsApp chat and summarize"**: opens WhatsApp → reads top chat → reports (M11)
-- [ ] **S7. "Open Reddit and search for pokeclaw"**: opens Reddit → types search → results (M51 verified)
+- [ ] **S7. "Open Reddit and search for sikoclaw"**: opens Reddit → types search → results (M51 verified)
 - [ ] **S8. "Write an email saying I'll be late"**: opens Gmail → compose draft ready with Subject/Body filled; recipient stays blank unless the task names one; does NOT send (M8/M19 verified)
 
 Current Pixel 8 Pro status on 2026-04-10:
 - `S2`, `S3`, `S5`, `S6`, `S7`, and `S8` are verified pass on the latest hardening branch.
-- `S1` is currently environment-blocked by a foreground YouTube runtime permission dialog (`GrantPermissionsActivity`), not by a deterministic search-flow failure in PokeClaw.
+- `S1` is currently environment-blocked by a foreground YouTube runtime permission dialog (`GrantPermissionsActivity`), not by a deterministic search-flow failure in Siko Claw.
 
 ## P. UI — v9 Design Verification
 
-Reference prototype: `/home/nicole/MyGithub/PokeClaw/prototype/dashboard-v9.html`
+Reference prototype: `/home/nicole/MyGithub/Siko Claw/prototype/dashboard-v9.html`
 
 ### P1. Local/Cloud Toggle (in toolbar)
-- [ ] **P1-1. Both buttons render**: "Local" and "Cloud" visible on same line as PokeClaw title, right side
+- [ ] **P1-1. Both buttons render**: "Local" and "Cloud" visible on same line as Siko Claw title, right side
 - [ ] **P1-2. Selected state**: selected button has aiBubble bg + aiBubbleBorder, unselected has no bg/border
 - [ ] **P1-3. No background container**: buttons sit directly in toolbar actions, no wrapping rectangle
 - [ ] **P1-4. Tab syncs on launch**: Cloud LLM loaded → Cloud highlighted; Local LLM → Local highlighted
@@ -909,8 +909,8 @@ Reference prototype: `/home/nicole/MyGithub/PokeClaw/prototype/dashboard-v9.html
 - [ ] **P3-10. Monitor card tap**: tap Monitor card → centered dialog (NOT bottom sheet) with Contact/App/Tone form + "Start Monitoring" button
 
 ### P4. Empty State
-- [ ] **P4-1. Local empty**: PokeClaw icon + "PokeClaw" + "Local AI" + hint with bold 💬 Chat / 🤖 Task + 3 chat prompts (joke, what can you do, email)
-- [ ] **P4-2. Cloud empty**: PokeClaw icon + "PokeClaw" + "Cloud AI" + "Chat and tasks work together" + 3 prompts (Tokyo, birthday, WhatsApp)
+- [ ] **P4-1. Local empty**: Siko Claw icon + "Siko Claw" + "Local AI" + hint with bold 💬 Chat / 🤖 Task + 3 chat prompts (joke, what can you do, email)
+- [ ] **P4-2. Cloud empty**: Siko Claw icon + "Siko Claw" + "Cloud AI" + "Chat and tasks work together" + 3 prompts (Tokyo, birthday, WhatsApp)
 - [ ] **P4-3. Prompt style matches Quick Tasks**: same accent bar, same height (~38dp), same font size, same bg color
 - [ ] **P4-4. Prompt tap**: tap empty state prompt → fills input, correct mode (local prompts = chat, cloud WhatsApp = task)
 
@@ -953,7 +953,7 @@ Layer 1 broadcast bypasses UI routing. Only Layer 3 catches routing bugs.
 - [ ] **Q2-4. Cloud direct-data bridge**: Cloud tab → type `read my clipboard and explain what it says` → backend uses the clipboard tool AND the explanation appears as a visible assistant bubble in the same chatroom
 - [ ] **Q2-4b. Empty clipboard is not a task failure**: Cloud tab → clipboard currently empty → type `read my clipboard and explain what it says` → answer honestly says clipboard is empty, but the chatroom must NOT insert a misleading `Clipboard failed` status line
 - [ ] **Q2-5. Cloud notifications bridge**: Cloud tab → type `read my notifications and summarize` → backend uses notifications tool AND the summary appears as a visible assistant bubble in the same chatroom
-- [ ] **Q2-6. Cloud-only capability proof**: in the same conversation, switch to Cloud and ask a task known to exceed Local reliability (for example `copy the latest email subject and Google it` or `open Reddit and search for pokeclaw`) → task completes successfully and the reply bubble is tagged with the Cloud model
+- [ ] **Q2-6. Cloud-only capability proof**: in the same conversation, switch to Cloud and ask a task known to exceed Local reliability (for example `copy the latest email subject and Google it` or `open Reddit and search for sikoclaw`) → task completes successfully and the reply bubble is tagged with the Cloud model
 - [ ] **Q2-7. Cloud context handoff proof**: in the same conversation, ask Cloud to summarize something, then say `send that summary by email` → Cloud uses the earlier chat context and the resulting reply/task output stays tagged as Cloud
 
 ### Q3. Local Tab Send Routing
@@ -987,12 +987,12 @@ Layer 1 broadcast bypasses UI routing. Only Layer 3 catches routing bugs.
 ### Q7. Task Stop + Session Preservation
 - [ ] **Q7-1. Cloud stop responds immediately**: start cloud/network task → tap Stop → task stops within 3 seconds (thread interrupted, HTTP call aborted)
 - [x] **Q7-1b. Local stop is safe and honest**: start local task → tap Stop → UI stays in `Task running...`/`Stop` while the current LiteRT round unwinds, then returns to idle with `Task cancelled`, no crash
-- [ ] **Q7-2. Stop returns to same session**: start task → task opens other app → tap Stop → returns to PokeClaw → same conversation visible (not new session)
+- [ ] **Q7-2. Stop returns to same session**: start task → task opens other app → tap Stop → returns to Siko Claw → same conversation visible (not new session)
 - [x] **Q7-3. App doesn't crash on stop**: start task → tap Stop → app remains running, no ANR, no crash
 - [x] **Q7-4. Send button resets after stop**: stop task → send button changes from red X back to arrow → can send new messages
 - [ ] **Q7-5. Second task after stop**: stop task 1 → start task 2 → task 2 executes normally (no "Agent is already running" error)
-- [ ] **Q7-6. Stop from floating button**: task running in other app → tap floating circle → "Tap to stop" → task stops, returns to PokeClaw
-- [ ] **Q7-7. Auto-return preserves conversation**: task completes in other app → auto-return to PokeClaw → previous messages + task result visible in same conversation
+- [ ] **Q7-6. Stop from floating button**: task running in other app → tap floating circle → "Tap to stop" → task stops, returns to Siko Claw
+- [ ] **Q7-7. Auto-return preserves conversation**: task completes in other app → auto-return to Siko Claw → previous messages + task result visible in same conversation
 
 ### Q8. Chatroom Memory Continuity
 - [ ] **Q8-1. Cloud same-chatroom memory**: in one Cloud chatroom, tell it a fact (e.g. "Remember: call Mom at 3pm") → exchange 2-3 unrelated turns → ask "What time did I say to call Mom?" → it should answer from the earlier message, not act like the chat started fresh
@@ -1025,19 +1025,19 @@ Layer 1 broadcast bypasses UI routing. Only Layer 3 catches routing bugs.
 
 ## L. Task Auto-Return
 
-- [ ] **L1. Auto-return after send message**: "send hi to Girlfriend on WhatsApp" → agent opens WhatsApp → sends → completes → PokeClaw chatroom comes back to foreground
+- [ ] **L1. Auto-return after send message**: "send hi to Girlfriend on WhatsApp" → agent opens WhatsApp → sends → completes → Siko Claw chatroom comes back to foreground
 - [ ] **L2. Auto-return shows answer**: after return, bot bubble shows the task result (not blank)
-- [ ] **L3. No auto-return for monitor**: "monitor Girlfriend on WhatsApp" → monitor starts → user stays in PokeClaw (not kicked to home, not auto-returned)
-- [ ] **L4. Monitor stays in app**: after monitor starts, user remains in PokeClaw chat → can keep chatting
-- [ ] **L5. Monitor receives notification without leaving app**: monitor active + stay in PokeClaw → someone sends WhatsApp message → notification caught → auto-reply triggers
-- [ ] **L5-b. Auto-reply does not kick user Home**: monitor active → incoming message triggers auto-reply → user remains in current app/PokeClaw, no forced Home navigation
+- [ ] **L3. No auto-return for monitor**: "monitor Girlfriend on WhatsApp" → monitor starts → user stays in Siko Claw (not kicked to home, not auto-returned)
+- [ ] **L4. Monitor stays in app**: after monitor starts, user remains in Siko Claw chat → can keep chatting
+- [ ] **L5. Monitor receives notification without leaving app**: monitor active + stay in Siko Claw → someone sends WhatsApp message → notification caught → auto-reply triggers
+- [ ] **L5-b. Auto-reply does not kick user Home**: monitor active → incoming message triggers auto-reply → user remains in current app/Siko Claw, no forced Home navigation
 - [ ] **L6. Second task after auto-return**: auto-return from task 1 → send task 2 → works normally
 
 ## K. Permissions
 
 - [ ] **K1. Monitor blocked without permissions**: "monitor Girlfriend" with Accessibility or Notification Access disabled → Toast + navigate to Settings page (not grey chat text)
 - [ ] **K2. Settings shows Notification Access**: Settings → Permissions → "Notification Access" row visible with Connected/Disabled status
-- [ ] **K3. Auto-return after Accessibility enable**: disable Accessibility → try monitor → go to Settings → enable Accessibility → app auto-returns to PokeClaw
+- [ ] **K3. Auto-return after Accessibility enable**: disable Accessibility → try monitor → go to Settings → enable Accessibility → app auto-returns to Siko Claw
 - [ ] **K4. Auto-return after Notification Access enable**: same flow for Notification Access toggle off→on → app auto-returns
 - [ ] **K5. Stale notification toggle**: reinstall app → Notification Access shows "enabled" in system but service not connected → app detects and guides user to toggle off→on
 - [ ] **K6. Settings links correct**: tap each permission row in app Settings → leads to correct system settings page:
@@ -1049,13 +1049,13 @@ Layer 1 broadcast bypasses UI routing. Only Layer 3 catches routing bugs.
   - File Access → system Storage settings
 - [ ] **K6-b. Settings model row handles long names**: Settings → active local/cloud model has a long name → label/value stay aligned, text truncates or wraps cleanly, and the left "Model" label does not collapse into a narrow vertical stack
 - [ ] **K7. Full permission setup flow (E2E)**:
-  1. Fresh state: disable Notification Access for PokeClaw
-  2. Open PokeClaw → type "monitor Girlfriend on WhatsApp" → send
+  1. Fresh state: disable Notification Access for Siko Claw
+  2. Open Siko Claw → type "monitor Girlfriend on WhatsApp" → send
   3. Verify: Toast shows "Enable Notification Access in Settings first"
-  4. Verify: app navigates to PokeClaw Settings page
+  4. Verify: app navigates to Siko Claw Settings page
   5. Tap "Notification Access" row → system Notification Listener settings opens
-  6. Toggle PokeClaw ON (or OFF→ON if stale)
-  7. Verify: auto-return to PokeClaw Settings page
+  6. Toggle Siko Claw ON (or OFF→ON if stale)
+  7. Verify: auto-return to Siko Claw Settings page
   8. Verify: "Notification Access" row now shows "Connected"
   9. Press back → return to chat → type "monitor Girlfriend on WhatsApp" again
   10. Verify: monitor starts successfully ("✓ Auto-reply is now active")
@@ -1105,7 +1105,7 @@ All tests on a real device with Google Speech Services installed (Pixel + most m
 - [ ] **V7. Send after voice input**: V3 succeeds → tap send → expected: message sends normally as if typed. **Needs V3 to pass first**
 - [ ] **V8. Voice input during isTaskRunning**: task running → tap mic → expected: dialog still opens (mic available); recognized text appended to field (does not interrupt running task). **Needs human voice; code uses `micEnabled = inputEnabled` only (not gated on isTaskRunning)**
 - [ ] **V9. Voice input in Task mode**: Local LLM → Task mode → tap mic → say "open WhatsApp" → expected: text appears, can submit as task. **Needs human voice + local model**
-- [x] **V10. Mic permission**: RecognizerIntent handles its own permission — no RECORD_AUDIO request from PokeClaw expected. **2026-05-26 PASS Pixel 8 Pro**: V2 dialog opened immediately without permission prompt — system mic permission delegated to Google Speech service, as designed**
+- [x] **V10. Mic permission**: RecognizerIntent handles its own permission — no RECORD_AUDIO request from Siko Claw expected. **2026-05-26 PASS Pixel 8 Pro**: V2 dialog opened immediately without permission prompt — system mic permission delegated to Google Speech service, as designed**
 
 ### ADB / uiautomator verification commands
 
@@ -1120,7 +1120,7 @@ adb shell uiautomator dump /sdcard/window_dump.xml && adb pull /sdcard/window_du
 grep -i 'speak now\|listening' /tmp/window_dump.xml
 
 # V6: check logcat for graceful no-service error
-adb logcat -d --pid=$(adb shell pidof io.agents.pokeclaw) | grep -i 'voice\|speech\|recognizer'
+adb logcat -d --pid=$(adb shell pidof com.sikoclaw.app) | grep -i 'voice\|speech\|recognizer'
 ```
 
 ---
@@ -1136,7 +1136,7 @@ every system prompt via `PromptUtils.applyGlobalPrompt()`. Empty string = disabl
 - [x] **W2. Open edit dialog**: tap Global instructions row → InputDialog bottom sheet opens with title "Edit global instructions", empty preset text, hint text visible. **2026-05-26 PASS Pixel 8 Pro**: logcat `SettingsActivity: open global prompt dialog: current.len=0`, dialog title "Edit global instructions", hint "Instructions to apply to every conversation. Leave empty to disable.", IME (keyboard) opened
 - [x] **W3. Save prompt**: enter "always reply in Cantonese" → Confirm → dialog dismisses → trailing text updates to "Set (25 chars)". **2026-05-26 PASS Pixel 8 Pro**: typed via `adb input text`, tapped OK [504,1271], logcat `SettingsActivity: global prompt saved: new.len=25, hasPrompt=true`, trailing text "Set (25 chars)"
 - [x] **W4. Persistence across app restart**: W3 → force-stop app → relaunch → open Settings → trailing text still "Set (25 chars)". **2026-05-26 PASS Pixel 8 Pro**: `am force-stop` + relaunch SplashActivity + nav to Settings → row still shows "Set (25 chars)"
-- [x] **W5. Persistence in MMKV**: `adb shell run-as io.agents.pokeclaw strings /data/data/io.agents.pokeclaw/files/mmkv/mmkv.default | grep -E "KEY_GLOBAL_PROMPT|...user text"`. **2026-05-26 PASS Pixel 8 Pro**: mmkv.default contains both "KEY_GLOBAL_PROMPT" key and "always reply in Cantonese" value strings
+- [x] **W5. Persistence in MMKV**: `adb shell run-as com.sikoclaw.app strings /data/data/com.sikoclaw.app/files/mmkv/mmkv.default | grep -E "KEY_GLOBAL_PROMPT|...user text"`. **2026-05-26 PASS Pixel 8 Pro**: mmkv.default contains both "KEY_GLOBAL_PROMPT" key and "always reply in Cantonese" value strings
 - [x] **W6. Clear prompt disables**: open dialog → clear text → Confirm → trailing text becomes "Not set". **2026-05-26 PASS Pixel 8 Pro**: tap btnClear @ [918,1100] then OK, logcat `global prompt saved: new.len=0, hasPrompt=false`, trailing "Not set"
 - [x] **W7. Injection in chat (logcat)**: with global prompt set, send any chat message → logcat shows `PromptUtils: applyGlobalPrompt: injecting global prompt (N chars) into base prompt (M chars)`. **2026-05-28 PASS Pixel 8 Pro v0.7.1-debug**: clean install + Groq llama-3.3-70b-versatile configured + prompt "Always reply in Cantonese only. No English." (43 chars) → logcat `PromptUtils: applyGlobalPrompt: injecting global prompt (43 chars) into base prompt (10693 chars)`. Fires at both ChatSessionController.buildConversationConfig path and ModelConfigRepository.toAgentConfig (v0.7.1 hotfix path).
 - [ ] **W8. Injection in task mode**: AgentConfig.Builder.build() path. **Same as W7 — needs configured LLM. Code path: AgentConfig.Builder.build() -> PromptUtils.applyGlobalPrompt before constructing AgentConfig**
@@ -1147,16 +1147,16 @@ every system prompt via `PromptUtils.applyGlobalPrompt()`. Empty string = disabl
 
 ```bash
 # W1: verify Settings row visible
-adb shell am start -n io.agents.pokeclaw/.ui.settings.SettingsActivity
+adb shell am start -n com.sikoclaw.app/.ui.settings.SettingsActivity
 sleep 2
 adb shell uiautomator dump /sdcard/dump.xml && adb pull /sdcard/dump.xml /tmp/
 grep -i 'global instructions\|Not set' /tmp/dump.xml
 
 # W4: persistence test
-adb shell am force-stop io.agents.pokeclaw
-adb shell am start -n io.agents.pokeclaw/.ui.splash.SplashActivity
+adb shell am force-stop com.sikoclaw.app
+adb shell am start -n com.sikoclaw.app/.ui.splash.SplashActivity
 sleep 4
-adb shell am start -n io.agents.pokeclaw/.ui.settings.SettingsActivity
+adb shell am start -n com.sikoclaw.app/.ui.settings.SettingsActivity
 sleep 2
 adb shell uiautomator dump /sdcard/dump.xml && adb pull /sdcard/dump.xml /tmp/
 grep -i 'Set ([0-9]' /tmp/dump.xml
@@ -1164,7 +1164,7 @@ grep -i 'Set ([0-9]' /tmp/dump.xml
 # W7/W8: verify injection in logcat
 adb logcat -c
 # (trigger a chat or task)
-adb logcat -d --pid=$(adb shell pidof io.agents.pokeclaw) | grep 'PromptUtils'
+adb logcat -d --pid=$(adb shell pidof com.sikoclaw.app) | grep 'PromptUtils'
 ```
 
 ---
@@ -1188,16 +1188,16 @@ should make GPU/OpenCL failures self-diagnosable without back-and-forth.
 
 ```bash
 # Trigger debug-report build via broadcast (no UI needed)
-adb shell am broadcast -p io.agents.pokeclaw -a io.agents.pokeclaw.DEBUG_TASK \
+adb shell am broadcast -p com.sikoclaw.app -a com.sikoclaw.app.DEBUG_TASK \
   --es support_action build_debug_report
 
 # Find latest report
-adb shell run-as io.agents.pokeclaw ls -t /data/user/0/io.agents.pokeclaw/cache/debug_reports/ | head -1
+adb shell run-as com.sikoclaw.app ls -t /data/user/0/com.sikoclaw.app/cache/debug_reports/ | head -1
 
 # Pull + extract summary.txt
-ZIP=$(adb shell run-as io.agents.pokeclaw ls -t /data/user/0/io.agents.pokeclaw/cache/debug_reports/ | head -1 | tr -d '\r')
-adb shell run-as io.agents.pokeclaw cat /data/user/0/io.agents.pokeclaw/cache/debug_reports/$ZIP > /tmp/pokeclaw-debug.zip
-unzip -p /tmp/pokeclaw-debug.zip summary.txt | grep -E "RAM|ABI|OpenCL|Backend health"
+ZIP=$(adb shell run-as com.sikoclaw.app ls -t /data/user/0/com.sikoclaw.app/cache/debug_reports/ | head -1 | tr -d '\r')
+adb shell run-as com.sikoclaw.app cat /data/user/0/com.sikoclaw.app/cache/debug_reports/$ZIP > /tmp/sikoclaw-debug.zip
+unzip -p /tmp/sikoclaw-debug.zip summary.txt | grep -E "RAM|ABI|OpenCL|Backend health"
 ```
 
 ---
@@ -1231,7 +1231,7 @@ adb shell uiautomator dump /sdcard/dump.xml && adb pull /sdcard/dump.xml /tmp/
 grep -i 'custom local model url\|Custom URL set' /tmp/dump.xml
 
 # X6 — persistence in MMKV
-adb shell run-as io.agents.pokeclaw strings /data/data/io.agents.pokeclaw/files/mmkv/mmkv.default | grep -E "KEY_CUSTOM_LOCAL_MODEL_URL|https://"
+adb shell run-as com.sikoclaw.app strings /data/data/com.sikoclaw.app/files/mmkv/mmkv.default | grep -E "KEY_CUSTOM_LOCAL_MODEL_URL|https://"
 ```
 
 ---
@@ -1242,7 +1242,7 @@ Format: `[date] [status] [test-id] description`
 
 ### 2026-05-28 — v0.7.1-debug W7 PromptUtils runtime verification (Pixel 8 Pro, Android 16)
 
-Clean install of `PokeClaw_v0.7.1-debug_20260526_114024.apk` after fresh uninstall. Configured Groq via Custom provider tab (uiautomator2 + Settings UI). Global prompt set via in-app dialog.
+Clean install of `Siko Claw_v0.7.1-debug_20260526_114024.apk` after fresh uninstall. Configured Groq via Custom provider tab (uiautomator2 + Settings UI). Global prompt set via in-app dialog.
 
 ```
 [2026-05-28] [PASS]    W7           PromptUtils.applyGlobalPrompt fires at runtime
@@ -1252,7 +1252,7 @@ Clean install of `PokeClaw_v0.7.1-debug_20260526_114024.apk` after fresh uninsta
                                     Global prompt: "Always reply in Cantonese only. No English." (43 chars)
 [2026-05-28] [PASS]    GROQ-switch  OpenAI gpt-4o-mini -> Groq llama-3.3-70b-versatile via Settings UI Custom provider tab
                                     Key sourced from ~/MyGithub/vibemic-native-ubuntu/.env (production)
-                                    Avoids OpenAI billing for PokeClaw local QA
+                                    Avoids OpenAI billing for Siko Claw local QA
 [2026-05-28] [GOTCHA]  CAPABILITY   AppCapabilityCoordinator stays in DEGRADED state after force-stop even though OS-level dumpsys shows Bound services.
                                     Workaround: Settings UI toggle off-then-on (programmatic `settings put secure enabled_accessibility_services` does NOT trigger onServiceConnected).
                                     Architecture finding: capability coordinator should recover from accidental task-kill without user toggling. Open BACKLOG P1.
@@ -1264,7 +1264,7 @@ Clean install of `PokeClaw_v0.7.1-debug_20260526_114024.apk` after fresh uninsta
 
 ### 2026-05-26 — v0.7.0 SIGNED RELEASE post-tag QA (Pixel 8 Pro, Android 16)
 
-Run on the actual GitHub release APK `PokeClaw_v0.7.0_20260526_101139.apk` after the v0.7.0 tag was pushed and CI built/signed/published. Goal: catch any regressions specific to the signed-release build path (proguard / minification / DEBUG=false) that did not appear in per-feature debug-build QA.
+Run on the actual GitHub release APK `Siko Claw_v0.7.0_20260526_101139.apk` after the v0.7.0 tag was pushed and CI built/signed/published. Goal: catch any regressions specific to the signed-release build path (proguard / minification / DEBUG=false) that did not appear in per-feature debug-build QA.
 
 ```
 [2026-05-26] [PASS]    REL.upgrade  v0.6.12 signed → v0.7.0 signed in-place upgrade succeeds (same keystore, no uninstall required)
@@ -1299,7 +1299,7 @@ Run on the actual GitHub release APK `PokeClaw_v0.7.0_20260526_101139.apk` after
 
 [2026-05-26] [TOOL]    QA.tooling    Added uiautomator2 to the QA toolchain (`pip install uiautomator2`). Tap-by-coordinate via `adb shell input tap` is unreliable when the IME is shown (keyboard intercepts taps in the bottom half of the screen). uiautomator2's `set_text` uses ACTION_SET_TEXT directly on the AccessibilityNode and does not require focus/IME, which fixes typing into long EditText fields. Note: uiautomator2's `d(...).click()` for a Composable node still resolves to a coordinate tap under the hood, so the same IME-intercept caveat applies for click. Workaround: dismiss IME first, or scroll the input bar above the keyboard region, or grant the relevant permission so the on-click side effect does what we want.
 
-[2026-05-26] [FAIL→FIX] W7            v0.7.0 PromptUtils.applyGlobalPrompt was wired only into AgentConfig.Builder.build() but the RUNTIME construction path is ResolvedModelConfig.toAgentConfig which uses the data class constructor directly. v0.7.0 saved KEY_GLOBAL_PROMPT to MMKV but never injected it into any actual LLM call. Confirmed via app_logs/pokeclaw-app.log — zero PromptUtils entries before fix. Fix: also call applyGlobalPrompt in toAgentConfig. After fix: "PromptUtils: applyGlobalPrompt: injecting global prompt (43 chars) into base prompt (10693 chars)" fires twice per agent init. Ship as v0.7.1 hotfix.
+[2026-05-26] [FAIL→FIX] W7            v0.7.0 PromptUtils.applyGlobalPrompt was wired only into AgentConfig.Builder.build() but the RUNTIME construction path is ResolvedModelConfig.toAgentConfig which uses the data class constructor directly. v0.7.0 saved KEY_GLOBAL_PROMPT to MMKV but never injected it into any actual LLM call. Confirmed via app_logs/sikoclaw-app.log — zero PromptUtils entries before fix. Fix: also call applyGlobalPrompt in toAgentConfig. After fix: "PromptUtils: applyGlobalPrompt: injecting global prompt (43 chars) into base prompt (10693 chars)" fires twice per agent init. Ship as v0.7.1 hotfix.
 [2026-05-26] [PASS]    W7.afterFix   With v0.7.1 fix (commit 2b8c2d5), PromptUtils.applyGlobalPrompt fires at agent config update + at agent loop start. AppLogStore captures the injection. Global prompt actually flows into LLM systemPrompt now.
 [2026-05-26] [PASS]    CI.matrix     Emulator Matrix CI workflow ALL 5 API LEVELS GREEN on commit 1089694 (run 26466236094). API 29/31/33/34/35 each: install APK, launch SplashActivity -> ComposeChatActivity, process alive at +8s, zero FATAL in crash buffer. Logcat artifact confirms real boot ("ClawApplication initialized, tools registered: 28") + activity transition. Earlier 3 failed runs were red herrings — the underlying issue across all of them was that `reactivecircus/android-emulator-runner@v2` runs each LINE of `script:` as a separate `sh -c <line>` invocation, so variables and if/then/fi never connect. Fix: extracted logic to `scripts/emulator-smoke.sh`.
 [2026-05-26] [GAP]     M/R/S         Cloud + Local LLM end-to-end task tests not run — no LLM API key configured in this QA pass
@@ -1383,9 +1383,9 @@ Run on the actual GitHub release APK `PokeClaw_v0.7.0_20260526_101139.apk` after
 [2026-04-08] [SKIP]    K5    Stale toggle detection — verified by K1
 [2026-04-08] [SKIP]    K6    Settings links — each permission row navigable (needs manual tap-through)
 [2026-04-08] [ISSUE]   K3-a  Auto-return fires on EVERY service connect, not just user-initiated enable — should only fire after permission flow
-[2026-04-08] [PASS]    L1    Send message task → agent opens WhatsApp → completes → auto-return to PokeClaw chatroom
-[2026-04-08] [PASS]    L3    Monitor starts → stays in PokeClaw (no press Home)
-[2026-04-08] [PASS]    L4    After monitor starts, user still in PokeClaw chat ("staying in PokeClaw" in logs)
+[2026-04-08] [PASS]    L1    Send message task → agent opens WhatsApp → completes → auto-return to Siko Claw chatroom
+[2026-04-08] [PASS]    L3    Monitor starts → stays in Siko Claw (no press Home)
+[2026-04-08] [PASS]    L4    After monitor starts, user still in Siko Claw chat ("staying in Siko Claw" in logs)
 [2026-04-08] [PASS]    L6    Second task after auto-return works normally
 [2026-04-08] [SKIP]    L2    Auto-return shows answer — needs UI verification (SINGLE_TOP preserves activity instance)
 [2026-04-08] [SKIP]    L5    Monitor receives notification without leaving app — needs 2nd device (same as C2)
@@ -1402,7 +1402,7 @@ Run on the actual GitHub release APK `PokeClaw_v0.7.0_20260526_101139.apk` after
 [2026-04-08] [PASS]    M1    (post-playbook) input_text("funny cat videos") called! Search results shown (13 rounds, 99K tokens)
 [2026-04-08] [PASS]    M2    send_message(Mom, sorry, WhatsApp) — correct routing, "Mom" not found (expected), graceful fail (2 rounds)
 [2026-04-08] [FIXED]   M3-a  "check what is on my screen" treated as chat — FIXED: added task keywords
-[2026-04-08] [PASS]    M3    Screen reading works: pre-warm attached, LLM described PokeClaw UI (1 round, 4.9K tokens)
+[2026-04-08] [PASS]    M3    Screen reading works: pre-warm attached, LLM described Siko Claw UI (1 round, 4.9K tokens)
 [2026-04-08] [FIXED]   M4-a  Compound task "open Settings AND turn on dark mode" truncated by Tier 1 — FIXED: compound check in PipelineRouter
 [2026-04-08] [PASS]    M4    Settings → Display → Dark theme toggled (6 rounds, 36K tokens)
 [2026-04-08] [PASS]    M5    WhatsApp opened, scroll_to_find("Mom"), "Mom" not found (expected), graceful fail (14 rounds, 89K tokens)
@@ -1427,7 +1427,7 @@ Run on the actual GitHub release APK `PokeClaw_v0.7.0_20260526_101139.apk` after
 | H6 | Pencil icon cannot rename chat session | Not implemented — deferred to feature backlog | Low |
 | ~~F3~~ | ~~Floating button IDLE in other apps~~ | ~~FIXED: show() callback now restores state via updateStateView~~ | ~~Medium~~ |
 | ~~F6~~ | ~~"..." coexists with tool actions~~ | ~~FIXED: removeTypingIndicator() on first ToolAction~~ | ~~Medium~~ |
-| B2-a | ~~No auto-return after task in other app~~ | Fixed 2026-04-10: cloud task completion now auto-returns to `ComposeChatActivity`, and recent YouTube search passes restored the same PokeClaw session after finishing in another app | Fixed |
+| B2-a | ~~No auto-return after task in other app~~ | Fixed 2026-04-10: cloud task completion now auto-returns to `ComposeChatActivity`, and recent YouTube search passes restored the same Siko Claw session after finishing in another app | Fixed |
 | M1-a | ~~YouTube search: LLM skips input_text~~ | Fixed 2026-04-10: generic in-app search guard now blocks premature completion on explicit `search [app] for [query]` / `search for [query] on [app]` tasks until the agent actually calls `input_text`, then inspects results before finishing | Fixed |
 | M3-a | ~~Screen reading routed as chat~~ | ~~FIXED: added "check", "screen", "notification", "compose", "find", "read my" to task detection~~ | ~~High~~ |
 | M4-a | ~~Compound tasks truncated by Tier 1~~ | ~~FIXED: PipelineRouter skips Tier 1 for tasks with "and"/"then"/"after"~~ | ~~High~~ |
@@ -1447,7 +1447,7 @@ Run on the actual GitHub release APK `PokeClaw_v0.7.0_20260526_101139.apk` after
 [2026-04-09] [PASS]    Q2-1  Cloud chat "hello" → "Hello! How can I help you today?" (1 round, 5K tokens)
 [2026-04-09] [PASS]    Q2-2  Cloud task "battery" → "100%, charging, 33.5°C" (2 rounds, get_device_info)
 [2026-04-09] [PASS]    Q4-1  Quick Task tap fills input "How much battery left?" + auto-switches to Task mode
-[2026-04-09] [PASS]    P1-1  Local/Cloud buttons in toolbar, same line as PokeClaw
+[2026-04-09] [PASS]    P1-1  Local/Cloud buttons in toolbar, same line as Siko Claw
 [2026-04-09] [PASS]    P1-3  No background container on buttons
 [2026-04-09] [PASS]    P2-5  Cloud mode: no Chat/Task toggle, placeholder "Chat or give a task..."
 [2026-04-09] [PASS]    P3-1  Quick Tasks panel with ▲ chevrons
@@ -1471,27 +1471,27 @@ Run on the actual GitHub release APK `PokeClaw_v0.7.0_20260526_101139.apk` after
 [2026-04-09] [PASS]    R4 storage analysis — 165s, storage + apps → LLM cross-referenced
 [2026-04-09] [PASS]    R5 notification summary — 150s, get_notifications → grouped by app + urgency
 [2026-04-09] [PASS]    R6 charge advice — 105s, get_device_info(battery) → "100% charging, no need"
-[2026-04-09] [FIXED]   Cloud send accessibility UX — Toast shown first ("Enable Accessibility Service to run tasks"), then navigates to PokeClaw Settings (not Android Settings). User sees all permissions.
+[2026-04-09] [FIXED]   Cloud send accessibility UX — Toast shown first ("Enable Accessibility Service to run tasks"), then navigates to Siko Claw Settings (not Android Settings). User sees all permissions.
 [2026-04-09] [PASS]    Chat bubble E2E — Cloud: user "hello" y=357, AI "Hello! How can I help you today?" y=465, model tag "gpt-4.1" y=538
 [2026-04-09] [PASS]    P2-3  Task mode: placeholder "Describe a phone task..." after tap 🤖 Task
 [2026-04-09] [PASS]    P2-4  Chat mode: placeholder "Chat with local AI..." after tap 💬 Chat
 [2026-04-09] [PASS]    P2-7  Mode switch preserves messages: Chat→Task→Chat, "test123" still visible
 [2026-04-09] [PASS]    P3-3  Quick Tasks collapse/expand: tap handle → collapsed, tap again → expanded
 [2026-04-09] [PASS]    J2    Empty input send: tap send with empty field → nothing sent
-[2026-04-09] [PASS]    Q4-2  Cloud Quick Task E2E: 🦞 Reddit → tap → fills input → send → agent navigated Reddit + searched pokeclaw
+[2026-04-09] [PASS]    Q4-2  Cloud Quick Task E2E: 🦞 Reddit → tap → fills input → send → agent navigated Reddit + searched sikoclaw
 [2026-04-09] [FIXED]   L1-v9 Session restore — onCreate reads CURRENT_CONVERSATION_ID from KVUtils, reloads saved messages. replaceTypingIndicator now calls saveChat() to persist task results immediately. Verified: "Restored 7 messages from conversation chat_1775787808468"
-[2026-04-10] [NOTE]    On this Pixel 8 Pro / Android 16, reinstall cleared Accessibility (`enabled_accessibility_services=null`). Re-enabling via `adb shell settings put secure enabled_accessibility_services io.agents.pokeclaw/io.agents.pokeclaw.service.ClawAccessibilityService` + `accessibility_enabled 1` restored the bound service for QA.
+[2026-04-10] [NOTE]    On this Pixel 8 Pro / Android 16, reinstall cleared Accessibility (`enabled_accessibility_services=null`). Re-enabling via `adb shell settings put secure enabled_accessibility_services com.sikoclaw.app/com.sikoclaw.app.service.ClawAccessibilityService` + `accessibility_enabled 1` restored the bound service for QA.
 [2026-04-09] [PASS]    Full E2E WhatsApp: UI type "send hi to Girlfriend on WhatsApp" → agent opened WhatsApp → send_message called → finish("Sent 'hi' to Girlfriend on WhatsApp.") → auto-return 15s → result visible in chatroom
-[2026-04-09] [PASS]    Auto-return verified: agent navigated to WhatsApp, completed task, returned to PokeClaw, user msg + AI result both visible in same session
-[2026-04-09] [PASS]    C1/L3/L4  Monitor start via in-app monitor flow stays in PokeClaw; top bar shows "Monitoring: Rlfriend", no Home press
+[2026-04-09] [PASS]    Auto-return verified: agent navigated to WhatsApp, completed task, returned to Siko Claw, user msg + AI result both visible in same session
+[2026-04-09] [PASS]    C1/L3/L4  Monitor start via in-app monitor flow stays in Siko Claw; top bar shows "Monitoring: Rlfriend", no Home press
 [2026-04-09] [PASS]    C3    Tap top monitoring bar → expands to show contact + Stop → tap Stop → AutoReplyManager logs "Auto-reply DISABLED for contacts: []"
-[2026-04-09] [PASS]    K6-a  App Settings → Accessibility Service row opens Android Accessibility page for PokeClaw
-[2026-04-09] [ISSUE]   K2-a  App Settings permission status stale — Accessibility row still shows "Disabled" even when system Accessibility page shows "Use PokeClaw" ON
+[2026-04-09] [PASS]    K6-a  App Settings → Accessibility Service row opens Android Accessibility page for Siko Claw
+[2026-04-09] [ISSUE]   K2-a  App Settings permission status stale — Accessibility row still shows "Disabled" even when system Accessibility page shows "Use Siko Claw" ON
 [2026-04-09] [ISSUE]   K3-b  Accessibility enable auto-return incomplete — app calls START on SettingsActivity after enable, but system Accessibility SubSettings stays foreground; user is not auto-returned
 [2026-04-10] [FIXED]   K2-a  Accessibility status row now reads system enabled-services state, so app Settings shows the truthful `Enabled`/`Disabled` value
 [2026-04-10] [PASS]    K2-a  App Settings → Accessibility Service row shows `Enabled` immediately after system Accessibility toggle is ON
 [2026-04-10] [FIXED]   K3-b  Pending accessibility auto-return is now armed only when the service is disabled, preventing false triggers while Accessibility is already ON
-[2026-04-10] [PASS]    K3    Disabled Accessibility → tap app Settings row → Android Accessibility → PokeClaw detail → toggle `Use PokeClaw` ON → app auto-returns to PokeClaw Settings and row shows `Enabled`
+[2026-04-10] [PASS]    K3    Disabled Accessibility → tap app Settings row → Android Accessibility → Siko Claw detail → toggle `Use Siko Claw` ON → app auto-returns to Siko Claw Settings and row shows `Enabled`
 [2026-04-10] [FIXED]   Q6-7  Task agent config now syncs on model switch and before startTask, so Cloud tab tasks no longer reuse stale Local agent config
 [2026-04-10] [PASS]    Q2-2/Q6-7  Cloud task "how much battery left" → Agent config updated to `gpt-4.1` → `get_device_info(category=battery)` runs → answer returned in chat with model tag `gpt-4.1-2025-04-14`
 [2026-04-10] [FIXED]   L1-v9  Cloud send-message auto-return now preserves the existing conversation instead of dropping the user into a fresh session
@@ -1504,7 +1504,7 @@ Run on the actual GitHub release APK `PokeClaw_v0.7.0_20260526_101139.apk` after
 [2026-04-09] [BLOCKED] L5/L5-b  Incoming WhatsApp notification auto-reply while staying in app requires a second sender device / live external message source
 [2026-04-09] [FIXED]   F2-v9 Stop button slow — added Future.cancel(true) to interrupt agent thread + abort HTTP call immediately (was: flag-only, waited for LLM round to finish)
 [2026-04-09] [ISSUE]   F2-v9 Stop → return to same session — after stopping task, should return to the SAME chat session, not open new one
-[2026-04-09] [ISSUE]   L1-v9 Auto-return should preserve session — after task completes in other app and auto-returns to PokeClaw, should show the same conversation with the result, not a fresh session
+[2026-04-09] [ISSUE]   L1-v9 Auto-return should preserve session — after task completes in other app and auto-returns to Siko Claw, should show the same conversation with the result, not a fresh session
 [2026-04-10] [PASS]    Q7-2/Q7-3/Q7-4/Q7-6  Cloud quick task "Search YouTube for funny cat fails" → YouTube opens → tap left floating bubble → `Stop task requested from floating pill` logged → task cancelled → auto-return restores same `ComposeChatActivity` session → send button resets to arrow
 [2026-04-10] [PASS]    Q7-5  After floating-stop, second Cloud task "how much battery left" runs normally → no `already running` error → answer returned in same session
 [2026-04-10] [ISSUE]   Q7-local  Local task stop could trigger a native crash / stale-session race: stop during LiteRT `sendMessage()` → chat UI reloads early → `session already exists` and occasional `SIGSEGV`
@@ -1514,15 +1514,15 @@ Run on the actual GitHub release APK `PokeClaw_v0.7.0_20260526_101139.apk` after
 [2026-04-10] [PASS]    Q7-5-local  After local stop, a second local task starts and completes normally — no `already running`, no `session already exists`, no crash
 [2026-04-10] [FIXED]   Dbg-u1  Debug builds now run the same once-per-day GitHub release check as release builds, so accidental debug installs still see upgrade prompts
 [2026-04-10] [BLOCKED] Dbg-u1  Live prompt verification still needs a throwaway device/build that is older than the just-installed `0.5.0`; current handset has already been upgraded, so this turn only covers code inspection + build/install verification, not a fresh old-debug prompt capture
-[2026-04-10] [PASS]    Dbg-u2  Public GitHub `v0.4.1` asset (`PokeClaw_v0.4.0_20260408_140502.apk`) on test device → cold launch after `v0.5.0` release published → `Update Available` modal appears with `PokeClaw v0.5.0 is available. You are running an older version.`
-[2026-04-10] [ISSUE]   Dbg-u3  Public GitHub `v0.4.1` asset cannot be updated in place to public `v0.5.0` asset: `adb install -r ... PokeClaw_v0.5.0_20260410_161430.apk` returns `INSTALL_FAILED_UPDATE_INCOMPATIBLE`; users on the older public debug signing path need a one-time uninstall + reinstall
+[2026-04-10] [PASS]    Dbg-u2  Public GitHub `v0.4.1` asset (`Siko Claw_v0.4.0_20260408_140502.apk`) on test device → cold launch after `v0.5.0` release published → `Update Available` modal appears with `Siko Claw v0.5.0 is available. You are running an older version.`
+[2026-04-10] [ISSUE]   Dbg-u3  Public GitHub `v0.4.1` asset cannot be updated in place to public `v0.5.0` asset: `adb install -r ... Siko Claw_v0.5.0_20260410_161430.apk` returns `INSTALL_FAILED_UPDATE_INCOMPATIBLE`; users on the older public debug signing path need a one-time uninstall + reinstall
 [2026-04-10] [FIXED]   Rel-s1  Release signing config now accepts the same `KEYSTORE_*` inputs from environment variables or `local.properties`, so local signed builds and GitHub Actions both follow the same stable-signing path
 [2026-04-10] [NOTE]    Rel-s2  `v0.5.1` is the first version prepared for a stable release key path; the old public `0.4.x` → public `0.5.0` signing mismatch is already shipped and cannot be retro-fixed without the lost original key
 [2026-04-10] [BLOCKED] Rel-s3  Public GitHub Release publication for `v0.5.1` still depends on installing the stable signing secrets into `agents-io/PokeClaw` Actions settings; code path is ready, repo permission path is not
-[2026-04-10] [PASS]    Rel-s4  Local stable-signing verification: generated a dedicated release keystore, `./gradlew :app:validateSigningRelease` passed, and a fresh `./gradlew --no-daemon :app:assembleRelease -x lintVitalRelease -x lintVitalAnalyzeRelease -x lintVitalReportRelease` produced `app/build/outputs/apk/release/PokeClaw_v0.5.1_20260410_111303.apk`
-[2026-04-10] [PASS]    Rel-s5  Local signed release artifact verification: `apksigner verify --print-certs` reports signer `CN=Nicole, OU=PokeClaw, O=agents.io, L=Vancouver, ST=British Columbia, C=CA` with SHA-256 `e000d1d6555b8fab20c03a5d9ddeba83944f26eecf0b978ac7affc2eebd43186`; local `SHA256SUMS.txt` records APK digest `fb7c6a6f4e2536f24bfb8f9ac6e8f7628aec11bf5e1a29b96fc18bb238fcde65`
+[2026-04-10] [PASS]    Rel-s4  Local stable-signing verification: generated a dedicated release keystore, `./gradlew :app:validateSigningRelease` passed, and a fresh `./gradlew --no-daemon :app:assembleRelease -x lintVitalRelease -x lintVitalAnalyzeRelease -x lintVitalReportRelease` produced `app/build/outputs/apk/release/Siko Claw_v0.5.1_20260410_111303.apk`
+[2026-04-10] [PASS]    Rel-s5  Local signed release artifact verification: `apksigner verify --print-certs` reports signer `CN=Nicole, OU=Siko Claw, O=agents.io, L=Vancouver, ST=British Columbia, C=CA` with SHA-256 `e000d1d6555b8fab20c03a5d9ddeba83944f26eecf0b978ac7affc2eebd43186`; local `SHA256SUMS.txt` records APK digest `fb7c6a6f4e2536f24bfb8f9ac6e8f7628aec11bf5e1a29b96fc18bb238fcde65`
 [2026-04-10] [PASS]    Rel-s6  Stable-signed `0.5.1` release APK fresh-installed successfully onto the Pixel test device after removing the old debug build; launcher resolves and app starts normally
-[2026-04-10] [PASS]    Rel-s7  Stable-key in-place upgrade path verified locally: with the same release keystore, a higher-version signed build (`POKECLAW_VERSION_CODE=15`, `POKECLAW_VERSION_NAME=0.5.1-upgrade-test`) installed over the stable-signed `0.5.1` baseline via `adb install -r` and Android accepted the upgrade with no signature mismatch
+[2026-04-10] [PASS]    Rel-s7  Stable-key in-place upgrade path verified locally: with the same release keystore, a higher-version signed build (`SIKOCLAW_VERSION_CODE=15`, `SIKOCLAW_VERSION_NAME=0.5.1-upgrade-test`) installed over the stable-signed `0.5.1` baseline via `adb install -r` and Android accepted the upgrade with no signature mismatch
 [2026-04-10] [FIXED]   M1-a  Explicit in-app search tasks now use a generic guard/prompt hint: the agent cannot finish before it really types the query with `input_text`, and blocked finishes feed back a fresh screen-based node hint instead of an app-specific scripted route
 [2026-04-10] [PASS]    M8/M1-a  Cloud task `search youtube for lofi beats` → `open_app` → `input_text(node_id=...)` succeeds → `system_key(enter)` → `get_screen_info` → `finish`; completes in 6 rounds / 46.7K tokens, no budget stop, auto-return restores `ComposeChatActivity`
 [2026-04-10] [PASS]    M8-alt/M1-a  Alternate phrasing `search for lofi beats on youtube` follows the same generic path (`open_app` → `input_text(node_id=...)` → `system_key` → `get_screen_info` → `finish`) and also completes in 6 rounds / 47.5K tokens
@@ -1538,21 +1538,21 @@ Run on the actual GitHub release APK `PokeClaw_v0.7.0_20260526_101139.apk` after
 [2026-04-10] [FIXED]   Bgt-1  Existing installs could stay pinned to the legacy 100K / $0.50 task budget even after code defaults increased. `TaskBudget` now migrates untouched legacy defaults to 250K / $1.00 once, while preserving user-custom budgets; Settings budget UI now exposes `250K` explicitly and snaps to the nearest current value
 [2026-04-10] [PASS]    S2/M32  Cloud task `Install Telegram from Play Store` → Play Store path completed without budget stop; on this device the agent correctly recognized Telegram was already installed and finished in 10s
 [2026-04-10] [PASS]    S3/M20  Cloud task `Check whats trending on Twitter and tell me` → `open_app(com.twitter.android)` → inspect current feed/trending content → summarize visible topics; completed in 30s with no task-budget stop
-[2026-04-10] [BLOCKED] S1/M1-b  Cloud task `Search YouTube for funny cat fails` is currently blocked by Android's foreground permission controller (`GrantPermissionsActivity`) over YouTube; PokeClaw surfaces this as `system dialog blocked foreground automation` instead of looping or timing out
+[2026-04-10] [BLOCKED] S1/M1-b  Cloud task `Search YouTube for funny cat fails` is currently blocked by Android's foreground permission controller (`GrantPermissionsActivity`) over YouTube; Siko Claw surfaces this as `system dialog blocked foreground automation` instead of looping or timing out
 [2026-04-10] [PASS]    S5/M33  Cloud task `Copy the latest email subject and Google it` → `get_notifications` → `clipboard(set)` → `open_app(com.android.chrome)` → search in Chrome → screenshot/search-results visible → `finish`; after legacy-budget migration this completed in 15 rounds / 110.2K tokens instead of hard-stopping at the old 100K ceiling
-[2026-04-10] [PASS]    S7/M51  Committed-state rerun `Open Reddit and search for pokeclaw` → `open_app(com.reddit.frontpage)` → `input_text(pokeclaw)` → results visible → `finish`; completed in 12 rounds / 91.9K tokens on the latest hardening branch
-[2026-04-10] [PASS]    Cloud quick-task sweep (effective final) on branch `hardening/behavior-safe-2026-04-09` @ `a0a88ab`: `18 PASS / 0 FAIL / 2 BLOCKED / 0 TIMEOUT / 20 TOTAL`. Blocked items are environment-driven (`S1` YouTube permission dialog, `Call Mom` missing contact). Base sweep log: `/tmp/pokeclaw-cloud-quick-tasks-20260410-full.log`; `S5` was rerun after the budget migration and passed at 110.2K tokens
+[2026-04-10] [PASS]    S7/M51  Committed-state rerun `Open Reddit and search for sikoclaw` → `open_app(com.reddit.frontpage)` → `input_text(sikoclaw)` → results visible → `finish`; completed in 12 rounds / 91.9K tokens on the latest hardening branch
+[2026-04-10] [PASS]    Cloud quick-task sweep (effective final) on branch `hardening/behavior-safe-2026-04-09` @ `a0a88ab`: `18 PASS / 0 FAIL / 2 BLOCKED / 0 TIMEOUT / 20 TOTAL`. Blocked items are environment-driven (`S1` YouTube permission dialog, `Call Mom` missing contact). Base sweep log: `/tmp/sikoclaw-cloud-quick-tasks-20260410-full.log`; `S5` was rerun after the budget migration and passed at 110.2K tokens
 [2026-04-10] [PASS]    Phase1-r1  Architecture refactor smoke — relaunch via `SplashActivity` with Cloud config active lands on `ComposeChatActivity` showing `● gpt-4.1 · Cloud` and the unified Cloud placeholder, confirming chat runtime rehydrate still works after `ChatSessionController` extraction
-[2026-04-10] [PASS]    Phase1-r2  Architecture refactor smoke — copied the existing Edge Gallery Gemma model into PokeClaw's sandbox, switched provider to `LOCAL`, relaunched, and confirmed `ComposeChatActivity` rehydrated into Local mode with `Chat with local AI...` plus top status `● gemma4_2b_v09_obfus_fix_all_modalities_thinking · GPU`
+[2026-04-10] [PASS]    Phase1-r2  Architecture refactor smoke — copied the existing Edge Gallery Gemma model into Siko Claw's sandbox, switched provider to `LOCAL`, relaunched, and confirmed `ComposeChatActivity` rehydrated into Local mode with `Chat with local AI...` plus top status `● gemma4_2b_v09_obfus_fix_all_modalities_thinking · GPU`
 [2026-04-10] [PASS]    Q3-1/Q5-1/Q5-1b/Phase1-r3  Local chat after `ChatSessionController` extraction: UI send produced a real assistant reply (`Hello! How can I help you today?`), GPU inference transparently fell back to CPU, and both the top status pill and assistant model tag updated to `CPU` instead of stale `GPU`
 [2026-04-10] [PASS]    Phase3-r1  Fresh reinstall + app Settings smoke: after `adb install -r`, Android cleared `enabled_accessibility_services`; app Settings now truthfully shows `Accessibility Service = Disabled` instead of stale `Enabled`
 [2026-04-10] [PASS]    Phase3-r2  Rebinding truth smoke: after restoring `enabled_accessibility_services` / `accessibility_enabled` via `adb shell settings put secure ...`, app Settings showed `Accessibility Service = Connecting` while the service was still rebinding, instead of collapsing enabled+unbound into `Disabled`
-[2026-04-10] [PASS]    Phase3-r3  Permission truth smoke: with no PokeClaw listener in `enabled_notification_listeners`, app Settings shows `Notification Access = Disabled`
+[2026-04-10] [PASS]    Phase3-r3  Permission truth smoke: with no Siko Claw listener in `enabled_notification_listeners`, app Settings shows `Notification Access = Disabled`
 [2026-04-10] [FIXED]   K4-r1  Notification-listener foreground return is now gated by a pending permission-flow flag, so listener reconnects no longer blindly foreground app Settings unless the user actually came from the in-app permission flow
 [2026-04-10] [PASS]    Phase4-r1/H4-b  After local-runtime consolidation, cold launch still lands on `ComposeChatActivity` with truthful local status `● gemma4_2b_v09_obfus_fix_all_modalities_thinking · CPU`
 [2026-04-10] [PASS]    Phase4-r2/Q3-1/Q5-1/Q5-1b  Local UI send smoke after runtime consolidation: typed `say pong`, tapped the live send-button bounds, and received assistant reply `Pong! 🏓`; both top status and assistant bubble tag remained `gemma4_2b_v09_obfus_fix_all_modalities_thinking (CPU)`
 [2026-04-10] [PASS]    P7-1/P7-2  Chat bubble metadata smoke: after relaunching `ComposeChatActivity`, user bubbles render a subtle time footer (`5:57 p.m.`) and assistant bubbles render `gemma4_2b_v09_obfus_fix_all_modalities_thinking (CPU) · 5:57 p.m.` under the reply bubble
-[2026-04-10] [PASS]    P7-3/Q7-7  Saved chat history now persists per-message timestamps in markdown via hidden `<!-- pokeclaw:timestamp=... -->` comments, so reloaded conversations keep stable bubble times instead of resetting to the current clock
+[2026-04-10] [PASS]    P7-3/Q7-7  Saved chat history now persists per-message timestamps in markdown via hidden `<!-- sikoclaw:timestamp=... -->` comments, so reloaded conversations keep stable bubble times instead of resetting to the current clock
 [2026-04-10] [PASS]    Phase1b-r1/Q7-7  After `ConversationStore` extraction, cold relaunch still restored `chat_1775851530681` with 9 saved messages; logcat showed `Restored 9 messages from conversation chat_1775851530681`, and the foreground UI still showed the existing `ay pong` / `Hello! How can I help you today?` conversation instead of a blank new chat
 [2026-04-10] [PASS]    Phase2b-r1  After `TaskFlowController` extraction, debug task broadcasts still reached the chat shell (`TaskTriggerReceiver: Received task via broadcast: battery`, `ComposeChatActivity: Auto-task from intent: battery`) and preserved in-app permission guidance by pushing `SettingsActivity` when Accessibility was unavailable
 [2026-04-10] [FIXED]   Android15-coldstart  Cold launch no longer crashes if app-start `ForegroundService` is disallowed; `ForegroundService.start()` now returns `false` and logs a warning instead of throwing `ForegroundServiceStartNotAllowedException` from `ClawApplication.onCreate()`
@@ -1565,7 +1565,7 @@ Run on the actual GitHub release APK `PokeClaw_v0.7.0_20260526_101139.apk` after
 [2026-04-10] [BLOCKED] Phase5-r2  Targeted device smoke for the new shared local runtime boundary is blocked by ADB attach state (`adb devices -l` returned no attached devices after the Phase 5 landing). Re-run `H4/H4-b`, `Q3-1`, `Q5-1`, `Q5-1b`, and the local quick-task bundle as soon as the Pixel is visible again instead of treating the missing device as an app regression
 [2026-04-10] [PASS]    Phase5-r3  Local model state consolidation compile gate: `LocalModelManager` now exposes shared device-support, catalog, and active-model state so `LlmConfigActivity` and `ChatSessionController` stop maintaining separate RAM/support/downloaded calculations (`compileDebugKotlin`, `compileDebugJavaWithJavac`)
 [2026-04-10] [PASS]    Phase5-r4  Local model ownership cleanup compile gate: `LocalModelManager.downloadModel()` no longer mutates MMKV selection state directly; chat/settings callers now decide whether a finished download should update the default or active local model (`compileDebugKotlin`, `compileDebugJavaWithJavac`)
-[2026-04-10] [NOTE]    QA-wf-r2  Device-state guard for Compose UI smoke: if notification shade or another app steals foreground, collapse/foreground PokeClaw again before judging the refactor; if IME moves the input bar, re-dump live bounds instead of reusing stale tap coordinates
+[2026-04-10] [NOTE]    QA-wf-r2  Device-state guard for Compose UI smoke: if notification shade or another app steals foreground, collapse/foreground Siko Claw again before judging the refactor; if IME moves the input bar, re-dump live bounds instead of reusing stale tap coordinates
 [2026-04-10] [PASS]    H2-d  Chat keyboard dismiss smoke passed on Pixel 8 Pro: after focusing the input, tapping the blank header area cleared focus (`focused=true` -> `focused=false`) and hid the IME instead of trapping the keyboard on screen
 [2026-04-10] [PASS]    B4-c  Accessibility text-match hardening compile/unit bundle passed: low-level lookup now keeps Android's fast text path but falls back to a Unicode-normalized tree walk, and standard launch dialogs try stable positive-button ids before language-specific keywords
 [2026-04-10] [PASS]    Phase5-r5  Cloud send smoke passed after send-affordance hardening: `send yo to girlfriend on WhatsApp` ran on `gpt-4.1`, called `send_message(contact=\"girlfriend\", message=\"yo\", app=\"WhatsApp\")`, finished in 2 rounds, and auto-returned with `Task completed: Sent 'yo' to your girlfriend on WhatsApp.`
@@ -1598,10 +1598,10 @@ Run on the actual GitHub release APK `PokeClaw_v0.7.0_20260526_101139.apk` after
 [2026-04-11] [FIXED]   RC6-local-session-race  Local direct QA exposed a real release blocker: while a Local task owned the LiteRT session, the chat shell could still try to reopen the same local model and trigger `A session already exists`. Fixed 2026-04-11: the chat-side loader now stands down whenever a task is running and shows `● Local task using model` instead of racing the task runtime
 [2026-04-12] [PASS]    Q8-3  Cloud relaunch memory continuity on Pixel 8 Pro: in one Cloud chatroom, `Remember token cloudrestart7312 and reply with only OK.` returned `OK`; after full force-stop + relaunch, the same conversation restored and `What token did I ask you to remember? Reply with only the token.` visibly returned `cloudrestart7312`
 [2026-04-12] [PASS]    Q8-4  Local relaunch memory continuity on Pixel 8 Pro: in one Local E4B chatroom, `Remember token localrestart5186 and reply with only OK.` returned `OK`; after full force-stop + relaunch, the same conversation restored under `● Gemma 4 E4B — 3.6GB · CPU` and `What token did I ask you to remember? Reply with only the token.` visibly returned `localrestart5186`
-[2026-04-12] [PASS]    Rel-s8  Version-prep build gate for `0.6.0`: `assembleDebug` passed in-sandbox, and a stable-signed local `assembleRelease` produced `app/build/outputs/apk/release/PokeClaw_v0.6.0_20260411_223047.apk` with SHA-256 `649b87e69cf166f8ce0e144aee9d416aaba48b152fa33842a88c7f695b67c57d`
+[2026-04-12] [PASS]    Rel-s8  Version-prep build gate for `0.6.0`: `assembleDebug` passed in-sandbox, and a stable-signed local `assembleRelease` produced `app/build/outputs/apk/release/Siko Claw_v0.6.0_20260411_223047.apk` with SHA-256 `649b87e69cf166f8ce0e144aee9d416aaba48b152fa33842a88c7f695b67c57d`
 [2026-04-28] [BLOCKED] Rel-s9  `v0.6.8` stable release APK could not upgrade the Pixel 8 Pro from the installed debug-signed `0.6.7`: `INSTALL_FAILED_UPDATE_INCOMPATIBLE`. Debug `0.6.8` upgraded in place and was used for code-path QA; the stable APK still needs a clean-install or signed-line migration test before upgrade claims
-[2026-04-28] [FAIL]    v068-cloud-sweep  Cloud quick-task sweep on Pixel 8 Pro / Android 16 with `gpt-4.1` finished `13 PASS / 4 FAIL / 1 BLOCKED / 2 TIMEOUT / 20 TOTAL`; result log: `/tmp/pokeclaw-v068-cloud-quick-20260428-123547.log`
-[2026-04-28] [FAIL]    S7/M51  `Open Reddit and search for pokeclaw` regressed from the 2026-04-10 pass; stuck detector stopped the agent after the screen stayed unchanged for 3 consecutive steps
+[2026-04-28] [FAIL]    v068-cloud-sweep  Cloud quick-task sweep on Pixel 8 Pro / Android 16 with `gpt-4.1` finished `13 PASS / 4 FAIL / 1 BLOCKED / 2 TIMEOUT / 20 TOTAL`; result log: `/tmp/sikoclaw-v068-cloud-quick-20260428-123547.log`
+[2026-04-28] [FAIL]    S7/M51  `Open Reddit and search for sikoclaw` regressed from the 2026-04-10 pass; stuck detector stopped the agent after the screen stayed unchanged for 3 consecutive steps
 [2026-04-28] [FAIL]    S6/M11  `Check my latest WhatsApp chat and summarize it` opened WhatsApp but repeated `system_key(back)` and was stopped by stuck detection
 [2026-04-28] [TIMEOUT] S8/M19  `Write an email saying I will be late today` timed out at 60s; the next harness case saw leaked `Task cancelled` state from the unfinished email flow
 [2026-04-28] [TIMEOUT] B1     `Send hi to Girlfriend on WhatsApp` timed out at 45s on the Pixel 8 Pro QA device
@@ -1609,31 +1609,31 @@ Run on the actual GitHub release APK `PokeClaw_v0.7.0_20260526_101139.apk` after
 [2026-04-28] [FAIL]    LQ-v068  Local quick-task sweep did not complete: an invalid first attempt failed after force-stop disconnected Accessibility, the retry timed out on `Notifications triage`, and a targeted Local E2B `how much battery left` smoke also timed out after 180s under the current device state
 [2026-04-28] [FIXED]   v068-debug-tool-anr  Direct debug tool broadcasts now run via `goAsync()` background work; focused `send_message` debug-tool smoke sent `qa-ping` to `Girlfriend` without the BroadcastReceiver main-thread ANR
 [2026-04-28] [FIXED]   v068-direct-tool-threading  Tier-1 DirectTool routes now execute off the caller thread, preserve `ToolResult.isSuccess`, log direct `onComplete`, and release/reset task state in a `finally` block
-[2026-04-28] [FIXED]   v068-e2e-cleanup  `scripts/e2e-quick-tasks.sh` now sends debug `cancel:`, resets foreground between cases, dismisses stale PokeClaw ANR dialogs, waits for Accessibility binding, and classifies `Failed:` completions as failures instead of passes
+[2026-04-28] [FIXED]   v068-e2e-cleanup  `scripts/e2e-quick-tasks.sh` now sends debug `cancel:`, resets foreground between cases, dismisses stale Siko Claw ANR dialogs, waits for Accessibility binding, and classifies `Failed:` completions as failures instead of passes
 [2026-04-28] [FIXED]   v068-wa-overflow  Contact lookup overlay dismissal no longer treats a generic top-right ImageButton as a close button; this stopped the WhatsApp overflow menu from being opened during contact lookup
 [2026-04-28] [FIXED]   v068-fgs-race  ForegroundService now calls `startForeground()` immediately in `onCreate()`, preventing `ForegroundServiceDidNotStartInTimeException` when a task fails/stops before `onStartCommand` can update the notification
 [2026-04-28] [PASS]    B1-v068-followup  Focused Cloud `Send hi to Girlfriend on WhatsApp` from a wrong WhatsApp chat completed in 15s: back to chat list, search `Girlfriend`, type `hi`, tap send, and log direct `onComplete`
-[2026-04-28] [FAIL]    v068-cloud-sweep-after-fixes  Latest Cloud quick-task sweep finished `17 PASS / 0 FAIL / 1 BLOCKED / 2 TIMEOUT / 20 TOTAL`; result log: `/tmp/pokeclaw-v068-cloud-quick-20260428-1337-after-wa-fix.log`. Remaining timeouts: WhatsApp latest-chat summary and copy latest email subject then Google it
+[2026-04-28] [FAIL]    v068-cloud-sweep-after-fixes  Latest Cloud quick-task sweep finished `17 PASS / 0 FAIL / 1 BLOCKED / 2 TIMEOUT / 20 TOTAL`; result log: `/tmp/sikoclaw-v068-cloud-quick-20260428-1337-after-wa-fix.log`. Remaining timeouts: WhatsApp latest-chat summary and copy latest email subject then Google it
 [2026-04-28] [PASS]    LQ-v068-e2b-battery-followup  Targeted Local E2B `How much battery left?` completed in 105s after GPU OpenCL failure fell back to CPU, called `get_device_info(category=battery)`, and returned `60%, not charging, 38.1°C`
 [2026-04-28] [BLOCKED] Rel-s10  Local `./gradlew assembleRelease` compiled and minified but failed at `:app:packageRelease`: `SigningConfig "release" is missing required property "storeFile"`. Signed release APK needs CI/release signing secrets or local keystore restoration
 [2026-04-28] [FIXED]   LMDir-r1  Issue #39 debug ZIP root cause confirmed: v0.6.7 failed before model download because the external app-files `models` directory did not exist, causing `StatFs` and `.downloading` open to throw `ENOENT`. The storage harness now requires a writable model dir, falls back to internal storage when external app storage cannot be created/written, and reports selected/external/internal model-dir diagnostics in bug ZIPs.
 [2026-04-28] [FIXED]   RelGate-r1  Release gate is now a concrete per-release record template covering direction, harness, scope, compile/test, script hygiene, artifact, targeted regression, device smoke, distribution, and user-followup checks.
-[2026-04-30] [PASS]    Rel-v0610-fresh-install  QA phone clean-installed stable v0.6.10 after uninstalling the debug-signed PokeClaw package; verified versionName=0.6.10, versionCode=25, and release signature fingerprint prefix 745eed92.
-[2026-04-30] [PASS]    TgBot-v0610-config  PokeClaw Settings -> Remote Control -> Telegram Bot accepted a Telegram bot token and Settings showed `Connected`; the token was treated as secret and was not recorded in QA notes.
+[2026-04-30] [PASS]    Rel-v0610-fresh-install  QA phone clean-installed stable v0.6.10 after uninstalling the debug-signed Siko Claw package; verified versionName=0.6.10, versionCode=25, and release signature fingerprint prefix 745eed92.
+[2026-04-30] [PASS]    TgBot-v0610-config  Siko Claw Settings -> Remote Control -> Telegram Bot accepted a Telegram bot token and Settings showed `Connected`; the token was treated as secret and was not recorded in QA notes.
 [2026-04-30] [BLOCKED] TgBot-v0610-e2e  Telegram bot true E2E remains blocked by handset Telegram account state: Telegram showed the account as frozen/read-only, and Spam Info Bot appeal was submitted successfully at 10:33; supervisor review is pending.
 [2026-04-30] [BLOCKED] TgApp-v0610-send  Telegram app send-message smoke is blocked by the same frozen/read-only Telegram account; do not claim Telegram app automation support until retested with a writable account/contact.
-[2026-04-30] [FIXED]   ExtAuto-r1  Production External Automation API added: user-enabled `io.agents.pokeclaw.RUN_TASK` / `RUN_CHAT` receiver, targeted-broadcast requirement, base64 extras, immediate `accepted` callback, and task terminal callback contract.
+[2026-04-30] [FIXED]   ExtAuto-r1  Production External Automation API added: user-enabled `com.sikoclaw.app.RUN_TASK` / `RUN_CHAT` receiver, targeted-broadcast requirement, base64 extras, immediate `accepted` callback, and task terminal callback contract.
 [2026-04-30] [FIXED]   ExtAuto-r2  External task intents no longer wait for chat model readiness; task payloads go straight to `TaskFlowController`, so deterministic/direct tasks can run before LLM config.
 [2026-04-30] [FIXED]   DD-ready-r1  Deterministic direct-device tasks now run before LLM/accessibility gates even when Accessibility is already `READY`; this prevents `how much battery left` from being incorrectly blocked by missing LLM config.
-[2026-04-30] [PASS]    C16-extauto-task  Pixel 8 Pro debug-build smoke: with `Settings -> Remote Control -> External Automation = Enabled`, `adb shell am broadcast -a io.agents.pokeclaw.RUN_TASK -p io.agents.pokeclaw --es task "how much battery left"` was accepted, logged `sendTask: executing deterministic direct tool before LLM/accessibility gates`, and visibly returned `Battery: 80%, charging, 35.0°C`.
-[2026-04-30] [PASS]    C17-extauto-chat  Pixel 8 Pro debug-build smoke: `adb shell am broadcast -a io.agents.pokeclaw.RUN_CHAT -p io.agents.pokeclaw --es chat "say hi"` was accepted and opened the chatroom path; because the clean QA install has no LLM selected, the UI showed `Configure LLM in Settings first.` instead of silently hanging.
+[2026-04-30] [PASS]    C16-extauto-task  Pixel 8 Pro debug-build smoke: with `Settings -> Remote Control -> External Automation = Enabled`, `adb shell am broadcast -a com.sikoclaw.app.RUN_TASK -p com.sikoclaw.app --es task "how much battery left"` was accepted, logged `sendTask: executing deterministic direct tool before LLM/accessibility gates`, and visibly returned `Battery: 80%, charging, 35.0°C`.
+[2026-04-30] [PASS]    C17-extauto-chat  Pixel 8 Pro debug-build smoke: `adb shell am broadcast -a com.sikoclaw.app.RUN_CHAT -p com.sikoclaw.app --es chat "say hi"` was accepted and opened the chatroom path; because the clean QA install has no LLM selected, the UI showed `Configure LLM in Settings first.` instead of silently hanging.
 [2026-04-30] [PARTIAL] C18-extauto-callback  Callback contract unit coverage passes and live task smoke with `request_id` / `return_action` did not crash, but no Tasker/MacroDroid callback receiver was available on the QA phone; keep true callback-consumer E2E open.
 [2026-04-30] [BLOCKED] Tasker-extauto-install  Tasker Play Store install on the QA phone is blocked by purchase requirement (`HK$34.90` shown). Do not claim Tasker-specific E2E until the paid app is installed or a user-owned license is available.
-[2026-04-30] [PASS]    MacroDroid-extauto-e2e  Installed MacroDroid, created macro `PokeClaw Battery E2E` with `Shortcut Launched` trigger and `Send Intent` action targeting `io.agents.pokeclaw.RUN_TASK`, package `io.agents.pokeclaw`, extra `task=how much battery left`; MacroDroid `Test macro` triggered PokeClaw, logged `Accepted external automation TASK`, ran the deterministic direct tool, and visibly returned `Battery: 83%, not charging, 38.1°C`.
+[2026-04-30] [PASS]    MacroDroid-extauto-e2e  Installed MacroDroid, created macro `Siko Claw Battery E2E` with `Shortcut Launched` trigger and `Send Intent` action targeting `com.sikoclaw.app.RUN_TASK`, package `com.sikoclaw.app`, extra `task=how much battery left`; MacroDroid `Test macro` triggered Siko Claw, logged `Accepted external automation TASK`, ran the deterministic direct tool, and visibly returned `Battery: 83%, not charging, 38.1°C`.
 [2026-04-30] [BLOCKED] ExtAuto-r3-v0611-signed  Signed v0.6.11 broadcast receiver received the request but Android 16 / targetSdk 36 blocked the receiver from opening `ComposeChatActivity` from background. Do not direct users to v0.6.11 for external automation.
-[2026-04-30] [FIXED]   ExtAuto-r4-activity-entry  Added exported transparent `ExternalAutomationActivity` so MacroDroid/Tasker/Locale-style apps can launch PokeClaw as an Activity with the same `RUN_TASK` / `RUN_CHAT` contract, avoiding background-activity-launch blocking.
-[2026-04-30] [PASS]    MacroDroid-extauto-activity-e2e  Pixel 8 Pro debug v0.6.12 smoke: MacroDroid `Send Intent` Target=`Activity`, Package=`io.agents.pokeclaw`, Class=`io.agents.pokeclaw.automation.ExternalAutomationActivity`, Action=`io.agents.pokeclaw.RUN_TASK`, extra `task=how much battery left`; MacroDroid `Test macro` launched PokeClaw, logged `Accepted external automation TASK`, ran the deterministic direct tool, and visibly returned `Battery: 100%, not charging, 36.0°C`.
-[2026-04-30] [PASS]    Rel-v0612-signed-macrodroid  Pixel 8 Pro signed-release smoke: clean-installed signed `v0.6.12` (`versionCode=27`, release signature fingerprint prefix `745eed92`), enabled External Automation from Settings, reran the same MacroDroid Activity-target macro, and visibly returned `Battery: 100%, charging, 35.2°C` in the PokeClaw chatroom.
+[2026-04-30] [FIXED]   ExtAuto-r4-activity-entry  Added exported transparent `ExternalAutomationActivity` so MacroDroid/Tasker/Locale-style apps can launch Siko Claw as an Activity with the same `RUN_TASK` / `RUN_CHAT` contract, avoiding background-activity-launch blocking.
+[2026-04-30] [PASS]    MacroDroid-extauto-activity-e2e  Pixel 8 Pro debug v0.6.12 smoke: MacroDroid `Send Intent` Target=`Activity`, Package=`com.sikoclaw.app`, Class=`com.sikoclaw.app.automation.ExternalAutomationActivity`, Action=`com.sikoclaw.app.RUN_TASK`, extra `task=how much battery left`; MacroDroid `Test macro` launched Siko Claw, logged `Accepted external automation TASK`, ran the deterministic direct tool, and visibly returned `Battery: 100%, not charging, 36.0°C`.
+[2026-04-30] [PASS]    Rel-v0612-signed-macrodroid  Pixel 8 Pro signed-release smoke: clean-installed signed `v0.6.12` (`versionCode=27`, release signature fingerprint prefix `745eed92`), enabled External Automation from Settings, reran the same MacroDroid Activity-target macro, and visibly returned `Battery: 100%, charging, 35.2°C` in the Siko Claw chatroom.
 ```
 
 ### Bugs Found During v9 QA
@@ -1652,8 +1652,8 @@ Run on the actual GitHub release APK `PokeClaw_v0.7.0_20260526_101139.apk` after
 | TgApp-v0610-readonly | Telegram app send-message smoke cannot complete on the current QA phone | Same frozen/read-only Telegram account cannot send messages or take actions until Telegram review completes | Environment blocker; retest with writable account/contact |
 | Q5-1 | ~~LiteRT "Can not find OpenCL" crash in sendChat()~~ | Fixed 2026-04-09: `sendChat()` now mirrors the Local client fallback path, resets the engine after OpenCL/native errors, and retries on CPU instead of failing the chat send | Fixed |
 | Q5-2 | ~~API key was "test"~~ | ~~Device had dummy key, reconfigured~~ | ~~Config~~ |
-| K2-a | ~~Accessibility status row shows `Disabled` while Android Accessibility page has `Use PokeClaw` ON~~ | Fixed 2026-04-10: app Settings now reads `enabled_accessibility_services` via `isEnabledInSettings()` | Fixed |
-| K3-b | ~~Accessibility enable flow does not foreground PokeClaw after system toggle ON~~ | Fixed 2026-04-10: pending return only arms for a real disabled→enabled flow, then unwinds Settings and foregrounds app | Fixed |
+| K2-a | ~~Accessibility status row shows `Disabled` while Android Accessibility page has `Use Siko Claw` ON~~ | Fixed 2026-04-10: app Settings now reads `enabled_accessibility_services` via `isEnabledInSettings()` | Fixed |
+| K3-b | ~~Accessibility enable flow does not foreground Siko Claw after system toggle ON~~ | Fixed 2026-04-10: pending return only arms for a real disabled→enabled flow, then unwinds Settings and foregrounds app | Fixed |
 | Q6-7 | ~~Cloud tab tasks can reuse stale Local agent config after a model switch~~ | Fixed 2026-04-10: task agent config now syncs on model switch and immediately before `startTask()` | Fixed |
 | Q1-r1 | ~~Toolbar tab UI can drift out of sync with the actual active model after Settings/model changes~~ | Fixed 2026-04-10: `ChatScreen` now re-syncs `selectedTab` from `isLocalModel`, so placeholder/quick-tasks/toggle follow the true active model again | Fixed |
 | L1-v9 | ~~Auto-return after task completion can reopen a fresh chat state instead of preserving the active conversation~~ | Fixed 2026-04-10: same conversation remained visible after Cloud `send_message` auto-return, with result appended in place | Fixed |

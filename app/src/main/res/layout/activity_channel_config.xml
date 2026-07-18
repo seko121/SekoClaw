@@ -7,7 +7,7 @@
     android:orientation="vertical">
 
     <!-- Toolbar -->
-    <io.agents.pokeclaw.widget.CommonToolbar
+    <com.sikoclaw.app.widget.CommonToolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="56dp" />
@@ -118,7 +118,7 @@
             </androidx.cardview.widget.CardView>
 
             <!-- 保存按钮 -->
-            <io.agents.pokeclaw.widget.KButton
+            <com.sikoclaw.app.widget.KButton
                 android:id="@+id/btnSave"
                 android:layout_width="match_parent"
                 android:layout_height="48dp"

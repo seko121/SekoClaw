@@ -1,7 +1,7 @@
-# PokeClaw — Playbook for the Next AI Agent
+# Siko Claw — Playbook for the Next AI Agent
 
 > Things the previous agent (me, 2026-05-25 / 2026-05-26) wishes someone had told them.
-> Read this BEFORE doing any QA or release work on PokeClaw. Saves ~3 hours per landmine.
+> Read this BEFORE doing any QA or release work on Siko Claw. Saves ~3 hours per landmine.
 
 ---
 
@@ -42,9 +42,9 @@ d(description='Send').click()
 
 `BuildConfig.DEBUG=false` on signed release. Specifically:
 
-- `adb shell run-as io.agents.pokeclaw ...` returns `package not debuggable`. **MMKV file inspection only works on debug builds.** For signed release, use force-stop + relaunch + Settings UI to verify persistence.
+- `adb shell run-as com.sikoclaw.app ...` returns `package not debuggable`. **MMKV file inspection only works on debug builds.** For signed release, use force-stop + relaunch + Settings UI to verify persistence.
 - `XLog.i` and `XLog.d` are suppressed from `adb logcat` because `ClawApplication.kt` calls `XLog.setDEBUG(BuildConfig.DEBUG)`. But `AppLogStore.log()` still captures `XLog.i` to the in-app log files — so the data lives in `debug-report.zip` even when not in logcat.
-- `DebugTaskReceiver` at `io.agents.pokeclaw.debug.DebugTaskReceiver:39` has `if (!BuildConfig.DEBUG) return` as the FIRST line of `onReceive`. **Every debug broadcast is silently dropped on release.** This means: `am broadcast --es task config:` for cloud LLM config, `--es support_action build_debug_report` for debug report generation, all NOT available on signed release. You must use the actual UI flow.
+- `DebugTaskReceiver` at `com.sikoclaw.app.debug.DebugTaskReceiver:39` has `if (!BuildConfig.DEBUG) return` as the FIRST line of `onReceive`. **Every debug broadcast is silently dropped on release.** This means: `am broadcast --es task config:` for cloud LLM config, `--es support_action build_debug_report` for debug report generation, all NOT available on signed release. You must use the actual UI flow.
 
 ### 3. Send FAB in Cloud+Send mode opens Settings — this is BY DESIGN, not a bug
 
@@ -90,7 +90,7 @@ If a side-project repo's `origin` is `git@github.com:agents-io/...`, push fails 
 git remote set-url origin git@github.com-personal:agents-io/REPO.git
 ```
 
-PokeClaw is already configured correctly; other side-projects may not be. See `~/MyGithub/agentic-journal/projects/3-ship/playbooks/side-project-repo-setup-checklist-2026-05-25.md`.
+Siko Claw is already configured correctly; other side-projects may not be. See `~/MyGithub/agentic-journal/projects/3-ship/playbooks/side-project-repo-setup-checklist-2026-05-25.md`.
 
 ### 7. CI signing secrets ARE installed — don't trust stale `CLAUDE.local.md`
 
@@ -100,12 +100,12 @@ PokeClaw is already configured correctly; other side-projects may not be. See `~
 
 `.github/workflows/emulator-matrix.yml` for Android emulator smoke tests:
 
-- **Component name**: launch via `io.agents.pokeclaw/.ui.splash.SplashActivity` (not `com.apk.claw.android...` which is a pre-rename stale name).
-- **APK artifact path**: `actions/upload-artifact@v4` with a path-glob preserves directory structure. The `.apk` may be at `apk/app/build/outputs/apk/debug/PokeClaw_*.apk` not `apk/*.apk`. Always use `find apk -type f -name '*.apk'` not assume a flat layout.
+- **Component name**: launch via `com.sikoclaw.app/.ui.splash.SplashActivity` (not `com.apk.claw.android...` which is a pre-rename stale name).
+- **APK artifact path**: `actions/upload-artifact@v4` with a path-glob preserves directory structure. The `.apk` may be at `apk/app/build/outputs/apk/debug/Siko Claw_*.apk` not `apk/*.apk`. Always use `find apk -type f -name '*.apk'` not assume a flat layout.
 
 ### 9. Component names changed during repo rename
 
-The project was renamed from a `com.apk.claw.android.*` namespace to `io.agents.pokeclaw.*`. Old references may still appear in:
+The project was renamed from a `com.apk.claw.android.*` namespace to `com.sikoclaw.app.*`. Old references may still appear in:
 - Stale doc snippets / older session notes
 - Earlier workflow files
 - Some hardcoded strings
@@ -117,7 +117,7 @@ When in doubt, grep the source — `grep -rn "com.apk.claw"` should return zero 
 Android 13+ has "restricted settings" that block ADB from enabling Accessibility / Notification-listener style services. The escape hatch is the `ACCESS_RESTRICTED_SETTINGS` appop:
 
 ```bash
-PKG=io.agents.pokeclaw
+PKG=com.sikoclaw.app
 
 # 1. POST_NOTIFICATIONS (Task Notifications row)
 adb shell pm grant $PKG android.permission.POST_NOTIFICATIONS
@@ -132,25 +132,25 @@ adb shell appops set $PKG SYSTEM_ALERT_WINDOW allow
 adb shell dumpsys deviceidle whitelist +$PKG
 
 # 5. Notification Access row (NotificationListenerService)
-adb shell cmd notification allow_listener $PKG/io.agents.pokeclaw.service.ClawNotificationListener
+adb shell cmd notification allow_listener $PKG/com.sikoclaw.app.service.ClawNotificationListener
 
 # 6. Accessibility Service — REQUIRES the appop bypass FIRST
 adb shell appops set $PKG ACCESS_RESTRICTED_SETTINGS allow
-adb shell settings put secure enabled_accessibility_services $PKG/io.agents.pokeclaw.service.ClawAccessibilityService
+adb shell settings put secure enabled_accessibility_services $PKG/com.sikoclaw.app.service.ClawAccessibilityService
 adb shell settings put secure accessibility_enabled 1
 
 # Verify
 adb shell dumpsys accessibility | grep -E "Bound services|Enabled services"
-# Want to see: Bound services:{Service[label=PokeClaw, eventTypes=TYPES_ALL_MASK, ...]}
+# Want to see: Bound services:{Service[label=Siko Claw, eventTypes=TYPES_ALL_MASK, ...]}
 ```
 
-**Trap:** if you `force-stop` PokeClaw after granting, the Accessibility binding may be lost. Re-run the bypass + `enabled_accessibility_services` write before the next chat-send test.
+**Trap:** if you `force-stop` Siko Claw after granting, the Accessibility binding may be lost. Re-run the bypass + `enabled_accessibility_services` write before the next chat-send test.
 
 **Reverse:** clear all granted perms before user testing if you want a fresh-install QA.
 
 ### 9.7. Don't trust the "Builder pattern" to be the runtime path
 
-v0.7.0 wired `PromptUtils.applyGlobalPrompt` into `AgentConfig.Builder.build()`. That looked like THE construction site if you read AgentConfig.kt. But the actual runtime constructor for AgentConfig is `ResolvedModelConfig.toAgentConfig()` in `ModelConfigRepository.kt`, which uses the data class constructor directly. Result: the global prompt was saved to MMKV but never injected into any LLM call. Verified via app_logs/pokeclaw-app.log — zero `PromptUtils:` entries on v0.7.0 even after MMKV showed the key present. Shipped as v0.7.1 hotfix.
+v0.7.0 wired `PromptUtils.applyGlobalPrompt` into `AgentConfig.Builder.build()`. That looked like THE construction site if you read AgentConfig.kt. But the actual runtime constructor for AgentConfig is `ResolvedModelConfig.toAgentConfig()` in `ModelConfigRepository.kt`, which uses the data class constructor directly. Result: the global prompt was saved to MMKV but never injected into any LLM call. Verified via app_logs/sikoclaw-app.log — zero `PromptUtils:` entries on v0.7.0 even after MMKV showed the key present. Shipped as v0.7.1 hotfix.
 
 **Lesson**: when you wire a helper into the "API of record" (Builder, factory method, DSL), grep for ALL construction sites of the target type and patch each one. Tests may only exercise the Builder, while production goes through the constructor.
 
@@ -158,9 +158,9 @@ v0.7.0 wired `PromptUtils.applyGlobalPrompt` into `AgentConfig.Builder.build()`.
 grep -rn "AgentConfig\.\|AgentConfig(\|toAgentConfig" app/src/main/java
 ```
 
-### 10. PokeClaw is a generic mobile-agent harness, NOT a missed-call product
+### 10. Siko Claw is a generic mobile-agent harness, NOT a missed-call product
 
-There is a SEPARATE revenue product called `~/MyGithub/missed-call-ai-chatbot-lab`. Missed-call follow-up is its scope, not PokeClaw's. PokeClaw stays generic — 21 tools × 13 rules — per `ARCHITECTURE_DECISIONS.md` D2. Do NOT add per-vertical workflows (missed call, plumber, dentist...) to PokeClaw core. If a generic primitive is needed (e.g. "phone call state read tool"), add it as a tool, not a workflow.
+There is a SEPARATE revenue product called `~/MyGithub/missed-call-ai-chatbot-lab`. Missed-call follow-up is its scope, not Siko Claw's. Siko Claw stays generic — 21 tools × 13 rules — per `ARCHITECTURE_DECISIONS.md` D2. Do NOT add per-vertical workflows (missed call, plumber, dentist...) to Siko Claw core. If a generic primitive is needed (e.g. "phone call state read tool"), add it as a tool, not a workflow.
 
 ---
 
@@ -178,9 +178,9 @@ When you reconnect ADB to this device, expect:
 To reset to clean state:
 
 ```bash
-adb uninstall io.agents.pokeclaw
+adb uninstall com.sikoclaw.app
 # Or to keep app but clear data:
-adb shell pm clear io.agents.pokeclaw
+adb shell pm clear com.sikoclaw.app
 ```
 
 ---
@@ -190,10 +190,10 @@ adb shell pm clear io.agents.pokeclaw
 ### Build + install signed release locally
 
 ```bash
-source ~/.config/pokeclaw/release-signing.env   # exports KEYSTORE_FILE etc.
-cd ~/MyGithub/PokeClaw
-POKECLAW_VERSION_CODE=29 POKECLAW_VERSION_NAME=0.7.1 ./gradlew assembleRelease
-adb install -r app/build/outputs/apk/release/PokeClaw_v*.apk
+source ~/.config/sikoclaw/release-signing.env   # exports KEYSTORE_FILE etc.
+cd ~/MyGithub/Siko Claw
+SIKOCLAW_VERSION_CODE=29 SIKOCLAW_VERSION_NAME=0.7.1 ./gradlew assembleRelease
+adb install -r app/build/outputs/apk/release/Siko Claw_v*.apk
 ```
 
 ### Generate debug-report on signed release
@@ -203,18 +203,18 @@ Must go via the actual UI (debug receiver is gated):
 ```python
 import uiautomator2 as u2
 d = u2.connect()
-d.app_start('io.agents.pokeclaw')
+d.app_start('com.sikoclaw.app')
 # Navigate Settings → About → Share Debug Report — open share sheet → save to file
-# Files live at /data/data/io.agents.pokeclaw/cache/debug_reports/*.zip
+# Files live at /data/data/com.sikoclaw.app/cache/debug_reports/*.zip
 # But you can't pull them via run-as on release — use the share intent to a
 # file manager or messaging app you control.
 ```
 
 On debug build, much simpler:
 ```bash
-adb shell am broadcast -p io.agents.pokeclaw -a io.agents.pokeclaw.DEBUG_TASK \
+adb shell am broadcast -p com.sikoclaw.app -a com.sikoclaw.app.DEBUG_TASK \
   --es support_action build_debug_report
-adb shell run-as io.agents.pokeclaw ls -t cache/debug_reports/ | head -1
+adb shell run-as com.sikoclaw.app ls -t cache/debug_reports/ | head -1
 ```
 
 ### Push a release (after pre-tag QA passes)
@@ -224,7 +224,7 @@ adb shell run-as io.agents.pokeclaw ls -t cache/debug_reports/ | head -1
 grep -E "versionCode|versionName" app/build.gradle.kts | head -2
 # Should show your new version. If not, bump them, commit, push, THEN tag.
 git tag -a vX.Y.Z -m "vX.Y.Z — short description"
-git push pokeclaw vX.Y.Z
+git push sikoclaw vX.Y.Z
 # CI workflow `Release APK` will sign + publish within ~10min. Watch:
 gh run list -R agents-io/PokeClaw --workflow 'Release APK' --limit 1
 ```

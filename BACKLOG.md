@@ -1,4 +1,4 @@
-# PokeClaw Backlog
+# Siko Claw Backlog
 
 Items go in, get prioritized, get done, get crossed out. Simple.
 
@@ -11,13 +11,13 @@ Priority: `P0` = blocks users, fix now. `P1` = next up. `P2` = when we get to it
 - [~] **P1** AppCapabilityCoordinator process-young grace (partial fix shipped 2026-05-28): `bindingState` now returns `CONNECTING` for the first 30s after process start regardless of stale `lastHealthyAt` in MMKV. Addresses the case where OS keeps the AccessibilityService enabled across an app process restart and rebinds within seconds — previously the in-app coordinator would see `running=false`+`lastHealthyAt` from minutes ago and immediately return `DEGRADED`, forcing the user back to Settings. Limitation: cannot help the Pixel-specific behavior where `force-stop` revokes the secure setting `accessibility_enabled` (true `DISABLED` state, requires user re-enable). Production behavior on Xiaomi/Samsung task-killers may or may not preserve the secure setting — needs telemetry to confirm. Runtime QA blocked on Pixel by the force-stop auto-disable; code-review verified. **2026-05-28 commit `pending` adds 30s process-start grace.**
 - [ ] **P1** Historical upgrade gap: users on the older public debug signing path still need a one-time uninstall + reinstall because the original public signing key is already lost
 - [ ] **P2** K3-a: Auto-return fires on every service connect, not just user-initiated permission enable
-- [ ] **P2** B2-a: No auto-return to PokeClaw after task completes in another app (e.g., stuck in YouTube)
+- [ ] **P2** B2-a: No auto-return to Siko Claw after task completes in another app (e.g., stuck in YouTube)
 - [ ] **P1** Investigate MediaTek/Samsung local-engine bring-up failures that still report OpenCL/LiteRT engine creation errors on some devices even after GPU→CPU fallback
 - [ ] **P2** Settings screen: active model row breaks layout when the model name is long; keep the label/value aligned and truncate or wrap cleanly without shoving the left label into a narrow column
 
 ## Features
 
-- [~] ~~**P0** Missed-call auto follow-up~~ — **dropped 2026-05-26**. Missed-call response is the dedicated scope of the separate revenue product `missed-call-ai-chatbot-lab` (web prototype, Android port planned there). PokeClaw stays the generic mobile-agent harness per ARCHITECTURE_DECISIONS.md D2 — no per-vertical workflows in core. If a future need arises for a generic "phone state" tool (any task that depends on call state), add it as a tool primitive, NOT a workflow.
+- [~] ~~**P0** Missed-call auto follow-up~~ — **dropped 2026-05-26**. Missed-call response is the dedicated scope of the separate revenue product `missed-call-ai-chatbot-lab` (web prototype, Android port planned there). Siko Claw stays the generic mobile-agent harness per ARCHITECTURE_DECISIONS.md D2 — no per-vertical workflows in core. If a future need arises for a generic "phone state" tool (any task that depends on call state), add it as a tool primitive, NOT a workflow.
 - [x] ~~**P0** Production external automation intent: promote the debug-only task/chat broadcast into a user-enabled production API for Tasker, MacroDroid, Locale, and ADB-style callers. It should accept explicit package/component broadcasts with `task` / `chat` / base64 extras, preserve harness safety rules, and optionally return a result callback intent.~~ — implemented 2026-04-30; callback contract exists, Tasker/MacroDroid callback E2E remains a QA gap
 - [ ] **P1** Persistent global instructions: add a user-editable local instructions layer that applies to new tasks/conversations without becoming a prompt dump. It must be short, inspectable, removable, local-first, and separate from hard safety/tool rules.
 - [ ] **P1** Scoped app/channel rules: support rules scoped to apps or channels such as WhatsApp, Telegram, Gmail, Browser, and Phone so the harness loads only relevant guidance instead of stuffing every rule into every local-model context.
@@ -26,7 +26,7 @@ Priority: `P0` = blocks users, fix now. `P1` = next up. `P2` = when we get to it
 - [ ] **P2** Voice input: add a prompt microphone button as an input method, preferably using an available cloud transcription path when the user has a cloud API key and a local/on-device option later. Wake-word/background listening is a separate higher-risk permission/battery design, not the MVP.
 - [ ] **P1** Local model import UX: keep shared-storage `.litertlm` import easy and explain clearly why other apps' `Android/data/...` sandboxes (for example Edge Gallery) are not directly readable
 - [ ] **P1** More small local model options: add 1B / 1.5B-class local models so lower-RAM phones can still run a useful on-device agent
-- [ ] **P1** Custom local model sources: let users point PokeClaw at user-defined model URLs / hosted downloads instead of only the built-in catalog
+- [ ] **P1** Custom local model sources: let users point Siko Claw at user-defined model URLs / hosted downloads instead of only the built-in catalog
 - [ ] **P2** Google AI Core integration research: evaluate Android's official on-device AI / system model APIs as an optional local runtime path
 - [ ] **P1** Structured monitor identifiers: let monitor setup keep a user-facing nickname while using a more stable identifier where possible (phone number / app-stable id / aliases) so WhatsApp/Telegram display-name drift stops breaking setup
 - [ ] **P2** Chat keyboard dismissal polish: tapping non-button chatroom space should reliably clear focus and hide IME in both empty and non-empty conversations
@@ -37,16 +37,16 @@ Priority: `P0` = blocks users, fix now. `P1` = next up. `P2` = when we get to it
 - [x] ~~**P2** Monitor stays in app~~ — done 2026-04-08, removed GLOBAL_ACTION_HOME
 - [ ] **P2** Unified task registry: monitor + agent tasks tracked in same system (top bar, floating button, etc.)
 - [ ] **P3** Rename chat session (H6): pencil icon in sidebar → InputDialog → update title in DB + markdown
-- [ ] **P3** Floating button: use PokeClaw icon instead of "AI" text
+- [ ] **P3** Floating button: use Siko Claw icon instead of "AI" text
 - [ ] **P3** ChatViewModel extraction: move business logic out of ComposeChatActivity god class
 - [ ] **P1** Full i18n refactor for ChatScreen.kt — 75+ user-facing hardcoded English strings (quick task templates, intro text, monitor labels, send/cancel labels) need extracting to strings.xml + zh + ja translation. Surfaced by realme RMX3823 user (#50) wanting "thorough Chinese version". Voice input strings (4 strings) already i18n'd in v0.7.0 as a first slice.
 
 ## QA Gaps
 
-- [ ] **P0** Missed-call follow-up E2E: missed-call notification / phone-state trigger reaches PokeClaw, follow-up message is sent to the caller, and the result/status is visible in the same chatroom
-- [ ] **P0** Production intent E2E: Tasker/MacroDroid-style explicit broadcast reaches PokeClaw in a release build, starts the requested task/chat, and never bypasses safety/global rules
-- [ ] **P1** Production intent callback E2E: when an external automation request includes `request_id` and `return_action`, PokeClaw broadcasts a completion/failure result that Tasker/MacroDroid can consume
-- [ ] **P1** Telegram bot channel E2E: token configured -> polling connected -> user sends `/start` and a task to the bot -> PokeClaw receives the update -> returns a visible bot reply. Current QA is blocked by the handset Telegram account being frozen/read-only.
+- [ ] **P0** Missed-call follow-up E2E: missed-call notification / phone-state trigger reaches Siko Claw, follow-up message is sent to the caller, and the result/status is visible in the same chatroom
+- [ ] **P0** Production intent E2E: Tasker/MacroDroid-style explicit broadcast reaches Siko Claw in a release build, starts the requested task/chat, and never bypasses safety/global rules
+- [ ] **P1** Production intent callback E2E: when an external automation request includes `request_id` and `return_action`, Siko Claw broadcasts a completion/failure result that Tasker/MacroDroid can consume
+- [ ] **P1** Telegram bot channel E2E: token configured -> polling connected -> user sends `/start` and a task to the bot -> Siko Claw receives the update -> returns a visible bot reply. Current QA is blocked by the handset Telegram account being frozen/read-only.
 - [ ] **P1** C2: Auto-reply trigger E2E — needs 2nd device to send WhatsApp message to Girlfriend
 - [x] ~~**P1** Release QA: verify locally signed `0.5.1+` public APK can upgrade in-place over the next signed public build once the stable key is installed in GitHub Actions~~ — done 2026-05-26: v0.6.12 signed → v0.7.0 signed in-place upgrade PASS on Pixel 8 Pro (same keystore, no uninstall needed)
 - [ ] **P0** PROCESS GATE — full QA on signed-release APK BEFORE pushing the version tag. v0.7.0 was tagged first and QA'd second; CLAUDE.md says full QA triggers on "before any release/version bump". Next release: pull the locally-built signed `assembleRelease` APK or the CI artifact from a draft release, run V/W/X/Y + J + K + P sections, only then push the tag.
@@ -65,7 +65,7 @@ Priority: `P0` = blocks users, fix now. `P1` = next up. `P2` = when we get to it
 - YC application showcase
 - Layer 2 NLP Playbooks as "App Cards" like DroidRun
 - On-device LLM as competitive moat (first to ship with Gemma 4)
-- Positioning: cloud/desktop-driven mobile-agent frameworks already exist; PokeClaw should own the phone-resident, local-first, model-slot harness that can run on a user's own Android device without a PC/cloud phone fleet.
+- Positioning: cloud/desktop-driven mobile-agent frameworks already exist; Siko Claw should own the phone-resident, local-first, model-slot harness that can run on a user's own Android device without a PC/cloud phone fleet.
 
 ---
 
@@ -91,6 +91,6 @@ _Move completed items here with date._
 - [x] ~~2026-05-26: Voice Input (#44)~~ — system RecognizerIntent wired into chat composer between TextField and Send FAB. V1/V2/V5/V10 ADB-verified PASS on Pixel 8 Pro v0.7.0; V3/V4/V7/V8/V9 need human voice verify, code path structurally verified
 - [x] ~~2026-05-26: Persistent Global Prompt (#45)~~ — MMKV-backed user-defined instructions, prepended to system prompt at ChatSessionController.buildConversationConfig and AgentConfig.Builder.build. Settings row under Model group, InputDialog editor, max 2000 chars, empty string = disabled. W1-W6 ADB-verified PASS Pixel 8 Pro v0.7.0 (MMKV persistence via run-as confirmed); W7/W8 logcat injection trace needs configured LLM to fire
 - [x] ~~2026-05-26: Custom Local Model URL (#36)~~ — MMKV-backed advanced setting. Adds synthetic ModelInfo (isCustom=true) appended to LocalModelManager.catalog(); LlmConfigActivity now iterates catalog so custom row renders. Relaxed file validation (≥1MB) for unknown-size custom models. http(s) prefix validator + Android auto-cap normalization. X1-X8 ADB-verified PASS Pixel 8 Pro v0.7.0 (custom model appears in Available Models list with displayName "Custom: my-model.litertlm")
-- [x] ~~2026-05-26: Floating button icon swap (BACKLOG P3)~~ — replaced "AI" text label with PokeClaw small icon in `layout_floating_circle.xml`'s `cardIdle` view. Layout compiles + inflates without error, content-desc localised in en/zh/ja. Tracked `tvFloatTextIdle` -> `ivFloatIconIdle`; old `floating_ai_label` string left in place but unused, can be cleaned up later
+- [x] ~~2026-05-26: Floating button icon swap (BACKLOG P3)~~ — replaced "AI" text label with Siko Claw small icon in `layout_floating_circle.xml`'s `cardIdle` view. Layout compiles + inflates without error, content-desc localised in en/zh/ja. Tracked `tvFloatTextIdle` -> `ivFloatIconIdle`; old `floating_ai_label` string left in place but unused, can be cleaned up later
 - [x] ~~2026-05-26: GPU/OpenCL diagnostics in debug-report (#41 + #14)~~ — DebugReportManager summary.txt now includes Supported ABIs, RAM, OpenCL library presence check (probes 6 well-known driver paths), and LocalBackendHealth.debugStateSummary() output. Y1-Y4 ADB-verified PASS Pixel 8 Pro (OpenCL found at /system/vendor/lib64/libOpenCL.so confirms why Pixel GPU fallback works; non-Pixel reporters will see "(none)" if drivers missing — enables instant community triage)
 - [x] ~~2026-05-26: Rename chat session — pencil icon (BACKLOG P3)~~ — pencil edit icon added next to each conversation row in sidebar's Recent list, alongside the existing long-press menu (kept for delete + power users). Tap pencil → existing rename AlertDialog opens pre-filled with current title. Long-press still works for both Rename and Delete. ADB-installed cleanly on Pixel 8 Pro; structural verification only (need an actual saved conversation to dump the icon in uiautomator, deferred to human verify or LLM-enabled QA session)

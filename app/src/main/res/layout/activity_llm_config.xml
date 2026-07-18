@@ -6,7 +6,7 @@
     android:background="@color/colorBgSecondary"
     android:orientation="vertical">
 
-    <io.agents.pokeclaw.widget.CommonToolbar
+    <com.sikoclaw.app.widget.CommonToolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="56dp" />
@@ -421,6 +421,19 @@
                             android:textColorHint="@color/colorTextTertiary"
                             android:textSize="13dp" />
 
+                        <TextView
+                            android:id="@+id/btnBrowseModels"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:layout_marginTop="8dp"
+                            android:background="@drawable/bg_edit_text"
+                            android:contentDescription="Load available models from this endpoint"
+                            android:gravity="center"
+                            android:text="Browse Available Models"
+                            android:textColor="@color/colorBrandPrimary"
+                            android:textSize="13dp"
+                            android:textStyle="bold" />
+
                     </LinearLayout>
 
                     <!-- Connection Status -->
@@ -451,7 +464,7 @@
                             android:textColor="@color/colorBrandPrimary"
                             android:textSize="13dp" />
 
-                        <io.agents.pokeclaw.widget.KButton
+                        <com.sikoclaw.app.widget.KButton
                             android:id="@+id/btnSaveCloud"
                             android:layout_width="0dp"
                             android:layout_height="44dp"

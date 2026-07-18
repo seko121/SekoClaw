@@ -73,7 +73,7 @@ runs and ~10 physical runs per day.
 2. Enable the Firebase Test Lab API: Console → "Test Lab" left nav → Get Started.
 3. Create a service account:
    - https://console.cloud.google.com → IAM & Admin → Service Accounts → Create
-   - Name: `pokeclaw-ci`
+   - Name: `sikoclaw-ci`
    - Roles: `Firebase Test Lab Admin`, `Cloud Testing Test Admin`
    - Create JSON key → download
 4. Create the results bucket:
@@ -83,7 +83,7 @@ runs and ~10 physical runs per day.
 5. Add the two GitHub secrets:
    ```bash
    gh secret set GCP_PROJECT_ID -R agents-io/PokeClaw -b "<your-project-id>"
-   gh secret set GCP_SA_KEY_JSON -R agents-io/PokeClaw < ~/Downloads/pokeclaw-ci-key.json
+   gh secret set GCP_SA_KEY_JSON -R agents-io/PokeClaw < ~/Downloads/sikoclaw-ci-key.json
    ```
 6. Manually trigger the workflow to verify it works:
    ```bash
@@ -135,7 +135,7 @@ adb over network without extra setup.
 2. Pick a device from `Device List` (e.g. Galaxy A52 5G for #16/#17 repro)
 3. Click `Reserve` (30-min sessions, then re-queue)
 4. Web client opens — controllable via browser only (no SSH/adb over network out-of-the-box)
-5. Sideload PokeClaw APK via the web client's `Install APK` button (drag the latest signed release APK from `~/MyGithub/PokeClaw/app/build/outputs/apk/release/`)
+5. Sideload Siko Claw APK via the web client's `Install APK` button (drag the latest signed release APK from `~/MyGithub/Siko Claw/app/build/outputs/apk/release/`)
 6. Drive UI in browser; capture findings in `QA_CHECKLIST.md` under K-section
 
 **Limitation vs Firebase Test Lab:** browser-only, manual, no scripted automation. Use it for human-driven repro of OEM-specific issues, not for CI.
@@ -156,7 +156,7 @@ plus actual chat / task / monitor flows.
 
 **Why this tier exists:** Firebase Test Lab and Samsung RTL DO NOT
 carry MIUI / HyperOS / ColorOS / RealmeUI. The open OEM issues that
-matter most for PokeClaw (#42 HyperOS Accessibility kill, #23 Redmi 14
+matter most for Siko Claw (#42 HyperOS Accessibility kill, #23 Redmi 14
 Pro UI crash, #48 Xiaomi 23013RK75C) only repro on real Xiaomi.
 
 **What you'd buy (priority order):**
@@ -223,7 +223,7 @@ v0.7.0 release. Replies posted, waiting for retest attachments.
   Firebase-supported device (Samsung S22/23/24, Xiaomi 13).
 - **Tier 3** when a Samsung A-series or Note user files a repro that
   Firebase can't host.
-- **Tier 4** is the moat. STRATEGY.md positions PokeClaw as the
+- **Tier 4** is the moat. STRATEGY.md positions Siko Claw as the
   cross-OEM neutral mobile-agent harness; the moat is genuine only if
   Tier 4 owns at least 2-3 vendor categories.
 - **Tier 5** is permanent — never replace, only feed.

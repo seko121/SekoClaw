@@ -1,6 +1,6 @@
-# PokeClaw — Architecture Decisions
+# Siko Claw — Architecture Decisions
 
-> External-reader-friendly summary of the load-bearing choices in PokeClaw's design.
+> External-reader-friendly summary of the load-bearing choices in Siko Claw's design.
 > The goal of this document: someone unfamiliar with the codebase can understand the
 > *why* of each major decision in 15 minutes — without reading the source.
 >
@@ -42,7 +42,7 @@ opt-in for users who provide their own API keys.
 ## D2. 21 generic Tools × 13 Core Rules — separating what the LLM can do from how it should behave
 
 **Decision.** All on-device actions go through a small, fixed set of generic tools
-(`app/src/main/java/io/agents/pokeclaw/tool/impl/`) — tap, scroll, input_text, open_app,
+(`app/src/main/java/io/agents/sikoclaw/tool/impl/`) — tap, scroll, input_text, open_app,
 read_screen, get_notifications, send_message, etc. — *not* per-app tools. App-specific
 behavior is encoded in 13 *Core Rules* injected into the system prompt.
 
@@ -78,7 +78,7 @@ behavior is encoded in 13 *Core Rules* injected into the system prompt.
 
 **Why.**
 
-- *Distribution requires an open core.* PokeClaw's GitHub stars, fork traffic, and
+- *Distribution requires an open core.* Siko Claw's GitHub stars, fork traffic, and
   acquirer optionality all depend on the codebase being credibly open.
 - *Sustainable revenue requires a paid surface.* Java Playbooks are the engineering
   effort that justifies a Plus/Pro tier. They are also the surface that benefits most
@@ -105,7 +105,7 @@ NotificationListenerService (for monitor + auto-reply flows).
 
 **Why.**
 
-- *No root requirement.* Root locks PokeClaw out of >99% of consumer Android phones.
+- *No root requirement.* Root locks Siko Claw out of >99% of consumer Android phones.
 - *No ADB pairing requirement.* Pairing-based automation tools work but require a PC
   during setup and re-pair after every reboot on some OEMs — far worse UX than a
   one-time Accessibility toggle.
@@ -150,7 +150,7 @@ table.
 
 ## D6. Community-delegated cross-OEM coverage, not in-house device farm
 
-**Decision.** PokeClaw owns Pixel + one Xiaomi Redmi as in-house QA. All other OEM
+**Decision.** Siko Claw owns Pixel + one Xiaomi Redmi as in-house QA. All other OEM
 coverage (Samsung, OPPO, realme, Infinix, vivo, Honor, etc.) is delegated to community
 reporters via a structured `debug-report.zip` flow.
 
@@ -169,7 +169,7 @@ reporters via a structured `debug-report.zip` flow.
   fingerprint, supported ABIs, RAM, OpenCL library probe (added 2026-05-26 for #41 / #14),
   Accessibility / Notification / Overlay state, recent logcat for backend tags, and
   recent HTTP logs.
-- Issues created via the PokeClaw template are required to attach this zip.
+- Issues created via the Siko Claw template are required to attach this zip.
 - The author triages, replies same-day (visible-commit signal), and ships a hotfix
   the next minor release.
 
@@ -229,7 +229,7 @@ reply is "thanks, can you attach the debug-report.zip from this build."
 
 ## North star (re-anchor)
 
-> PokeClaw is the open-source mobile agent harness. On every Android phone that runs
+> Siko Claw is the open-source mobile agent harness. On every Android phone that runs
 > an AI assistant, this is the layer that translates "do this for me" into
 > AccessibilityService taps + notification reads, regardless of which LLM the user
 > picked.

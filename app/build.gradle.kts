@@ -24,7 +24,7 @@ fun readLocalOrEnvInt(key: String, defaultValue: Int): Int {
 }
 
 android {
-    namespace = "io.agents.pokeclaw"
+    namespace = "com.sikoclaw.app"
     compileSdk {
         version = release(36) {
             minorApiLevel = 1
@@ -51,13 +51,13 @@ android {
     }
 
     defaultConfig {
-        applicationId = "io.agents.pokeclaw"
+        applicationId = "com.sikoclaw.app"
         minSdk = 28
         targetSdk = 36
-        versionCode = readLocalOrEnvInt("POKECLAW_VERSION_CODE", 29)
-        versionName = readLocalOrEnvString("POKECLAW_VERSION_NAME", "0.7.1")
+        versionCode = readLocalOrEnvInt("SIKOCLAW_VERSION_CODE", 29)
+        versionName = readLocalOrEnvString("SIKOCLAW_VERSION_NAME", "0.7.1")
         buildConfigField("String", "VERSION_INFO", getVersionGit())
-        buildConfigField("String", "APP_ORIGIN", "\"PokeClaw by agents.io | github.com/agents-io/PokeClaw\"")
+        buildConfigField("String", "APP_ORIGIN", "\"Siko Claw | based on PokeClaw by agents.io\"")
         buildConfigField("String", "BUILD_FINGERPRINT", "\"${getBuildFingerprint()}\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -193,7 +193,7 @@ androidComponents {
         variant.outputs.forEach { output ->
             if (output is com.android.build.api.variant.impl.VariantOutputImpl) {
                 val versionName = android.defaultConfig.versionName ?: "0.0.0"
-                val fileName = "PokeClaw_v${versionName}_${getDateTime()}.apk"
+                val fileName = "SikoClaw_v${versionName}_${getDateTime()}.apk"
                 println("output file name: $fileName")
                 output.outputFileName.set(fileName)
             }
@@ -202,6 +202,7 @@ androidComponents {
 }
 
 fun getVersionGit(): String {
+    return try {
     val process1 = Runtime.getRuntime().exec("git rev-parse --abbrev-ref HEAD")
     val reader1 = BufferedReader(InputStreamReader(process1.inputStream))
     val branch = reader1.readLine()?.trim()
@@ -212,7 +213,10 @@ fun getVersionGit(): String {
     val sha1 = reader2.readLine()?.trim()
     reader2.close()
     // 将数据拼接起来，如果只需要SHA-1 那么就可以不执行process1命令
-    return "\"" + branch + "_" + sha1 + "\""
+        "\"" + (branch ?: "local") + "_" + (sha1 ?: "unknown") + "\""
+    } catch (_: Exception) {
+        "\"local_unknown\""
+    }
 }
 
 fun getBuildFingerprint(): String {

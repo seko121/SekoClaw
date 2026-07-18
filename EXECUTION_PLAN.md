@@ -1,4 +1,4 @@
-# PokeClaw — Execution Plan to Acquisition Target
+# Siko Claw — Execution Plan to Acquisition Target
 
 > Bridges STRATEGY.md (where + why) and BACKLOG.md (what).
 > Target per STRATEGY.md: **$50-100M strategic acquisition by 2027-Q2**.
@@ -167,7 +167,7 @@ After Phase 4: `v1.0.0` — API stable + MAP spec draft.
 Decision gate per STRATEGY.md §10:
 - Hit all 3 milestones (active push, 2000+ stars, 1 inbound) → **continue + raise/sell**
 - Hit 1-2 → continue but reconsider scope
-- Hit 0 → archive PokeClaw
+- Hit 0 → archive Siko Claw
 
 ---
 
@@ -179,7 +179,7 @@ For each OEM bug we can't repro:
 1. Leave **visible reply within 24 hr**：「v0.X.Y diagnostics ship 緊，請 attach fresh debug-report.zip」
 2. **Issue template enforcement** — require OEM + Android version + Build number + debug-report.zip
 3. **Vendor-specific code directories** — `vendor/xiaomi/`、`vendor/samsung/`
-4. **「PokeClaw OEM Verified」badge** in README — community-maintained matrix
+4. **「Siko Claw OEM Verified」badge** in README — community-maintained matrix
 
 ### Active commit signal
 

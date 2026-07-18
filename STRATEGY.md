@@ -1,4 +1,4 @@
-# PokeClaw — Moat, Window, Acquisition Thesis
+# Siko Claw — Moat, Window, Acquisition Thesis
 
 > 內部戰略文件。記錄 acquisition target、why-this-survives-AI、reframe community model。
 > Tactical state 喺 `CLAUDE.local.md`，feature backlog 喺 `BACKLOG.md`，execution mapping 喺 `EXECUTION_PLAN.md`。
@@ -30,13 +30,13 @@ Anthropic 用 ~$300M 收購 Stainless（20 人、$1M ARR、4 年）。收購當�
 
 **Stainless 係 infrastructure wedge**：切入點窄（SDK generation），一旦嵌入客戶嘅 CI/CD，replacement cost 極高。
 
-**PokeClaw 嘅 strategic shape = Stainless 嘅 mirror image，但喺 mobile agent layer。**
+**Siko Claw 嘅 strategic shape = Stainless 嘅 mirror image，但喺 mobile agent layer。**
 
 ---
 
 ## 3. Why mobile agent harness is Stainless-shape (and ChatbotLite isn't)
 
-| 維度 | ChatbotLite | **PokeClaw** | Stainless |
+| 維度 | ChatbotLite | **Siko Claw** | Stainless |
 |---|---|---|---|
 | Mindshare 已證明 | 0 stars | **872 stars / 123 forks** ✅ | 1000+ stars |
 | 2 日可以複製？ | ✅ 可以 | ❌ **唔可以** | ❌ 唔可以 |
@@ -45,7 +45,7 @@ Anthropic 用 ~$300M 收購 Stainless（20 人、$1M ARR、4 年）。收購當�
 | Buyer 動機 | 中 | **高**（Anthropic、Samsung、Xiaomi、OpenAI） | 極高 |
 | Emerging standard 卡位 | tool card protocol | **mobile agent protocol** | MCP |
 
-PokeClaw 嘅技術 surface area 包括：
+Siko Claw 嘅技術 surface area 包括：
 - Android Accessibility Service expertise (多 vendor 行為差異)
 - On-device LiteRT-LM + Gemma optimization (CPU/GPU 路徑、OpenCL 兼容)
 - Cross-OEM UI automation (1000s of app UI variations)
@@ -58,7 +58,7 @@ PokeClaw 嘅技術 surface area 包括：
 
 ## 4. The existential question — "Google 自己整啦講真，使乜我啫"
 
-**Short answer: Google 唔會純粹取代 PokeClaw。理由三個。**
+**Short answer: Google 唔會純粹取代 Siko Claw。理由三個。**
 
 ### 4.1 Android politics 已經 broken
 - **Samsung 唔信 Google AI** — Galaxy AI 嘅核心 strategy 就係 Google-independent
@@ -68,7 +68,7 @@ PokeClaw 嘅技術 surface area 包括：
 
 Google 整嘅 mobile agent 永遠係 **Pixel-first、多年後先 expand**。Samsung / Xiaomi 用戶冇得用。
 
-### 4.2 PokeClaw 嘅 22 個 issues 證明嘅唔係 weakness，係 unique coverage
+### 4.2 Siko Claw 嘅 22 個 issues 證明嘅唔係 weakness，係 unique coverage
 睇 open issues：
 - Xiaomi HyperOS 3 — Accessibility Service disconnect
 - Samsung Galaxy A52 — download fails
@@ -80,7 +80,7 @@ Google 整嘅 mobile agent 永遠係 **Pixel-first、多年後先 expand**。Sam
 
 ### 4.3 「Open source AI controlling your phone」嘅信任結構
 - Google 整：用戶要相信 Google 唔會偷睇個 phone（已經失分）
-- PokeClaw 整：source code 可審計，本地 model，零 telemetry → **信任結構完全唔同**
+- Siko Claw 整：source code 可審計，本地 model，零 telemetry → **信任結構完全唔同**
 
 ---
 
@@ -102,18 +102,18 @@ Google 整嘅 mobile agent 永遠係 **Pixel-first、多年後先 expand**。Sam
 
 ## 6. Why this moat survives AI
 
-「AI 而家識寫 code，PokeClaw 唔係好快就被新 entrant 抄走？」
+「AI 而家識寫 code，Siko Claw 唔係好快就被新 entrant 抄走？」
 
 六個理由 mirror Stainless（同 ChatbotLite STRATEGY.md 嗰六條）：
 
 1. **AI 寫得出 code，hold 唔住 3 年 system ownership** — 22 個 OEM issues × 每次 Android 更新 × backwards compat × battery optimization = lifecycle 唔係 generation
 2. **Hallucination cost at infra layer 係 catastrophic** — agent 撳錯 button 可以洗錢、洗數據、發錯 message。需要 human-reviewed safety primitives
 3. **Idiomatic Android 深度** — Accessibility Service 喺 Samsung 同 Xiaomi 嘅行為差好遠；呢啲 know-how AI 而家 model 唔到
-4. **Schema / spec 邊界處理** — Real-world app UI 係 messy（dialog 結構、button label、scroll behavior 都唔 standard）；PokeClaw 嘅 21 tools + 13 rules 就係 normalization layer
+4. **Schema / spec 邊界處理** — Real-world app UI 係 messy（dialog 結構、button label、scroll behavior 都唔 standard）；Siko Claw 嘅 21 tools + 13 rules 就係 normalization layer
 5. **買家 opportunity cost** — Anthropic 工程師時薪極貴，唔會花 6 個月起 mobile harness（同 Stainless 邏輯一樣）
 6. **Systems thinking across 5000 decision points** — AI 而家做唔到「同時 hold 21 tools × 13 rules × 多 OEM × 多 model × monitor + agent 雙模式」嘅 coherence
 
-**Window erosion timeline: 3-5 年 AI 追上系統 ownership。** Anthropic 用 $300M 買 Stainless 部分原因係買 3 年 window。PokeClaw 嘅 window 應該 similar — **next 18 個月係 decisive window**。
+**Window erosion timeline: 3-5 年 AI 追上系統 ownership。** Anthropic 用 $300M 買 Stainless 部分原因係買 3 年 window。Siko Claw 嘅 window 應該 similar — **next 18 個月係 decisive window**。
 
 ---
 
@@ -132,12 +132,12 @@ Google 整嘅 mobile agent 永遠係 **Pixel-first、多年後先 expand**。Sam
 
 **Stainless 從來唔自己用 OpenAI / Google / Anthropic 每個 customer 嘅 API spec — 佢哋 build normalization layer，個別 spec 嘅 weirdness 由 customer 負責 report。**
 
-PokeClaw 應該做嘅：
+Siko Claw 應該做嘅：
 1. **Publish 「OEM Compatibility Matrix」** — Pixel / Samsung / Xiaomi / OPPO / Realme / MediaTek 每行一個 column
 2. **每個 OEM 邀請 community maintainer** — 你冇手機，但 fork 你個人有
 3. **Issue template 強制要求 OEM + Android version + Build number** — 篩選 high-signal report
 4. **Vendor-specific code 放喺 `vendor/xiaomi/`、`vendor/samsung/` subdirectory** — community 直接 PR
-5. **「PokeClaw OEM Verified」badge** — 邊個 OEM × Android version 已測 PASS 嘅 community-maintained list
+5. **「Siko Claw OEM Verified」badge** — 邊個 OEM × Android version 已測 PASS 嘅 community-maintained list
 
 呢個 model 解放你嘅時間 → 你可以做 strategic moves（protocol spec、acquisition outreach），唔係日日 debug Xiaomi。
 
@@ -191,7 +191,7 @@ Stainless 有 20 個 specialized engineers。Nicole 係 1 個人 + **多個 AI a
 
 ### Target 估值 range（optimistic + AI-evolution-aware）
 
-| | Stainless | **PokeClaw (solo + multi-AI, 2027 view)** |
+| | Stainless | **Siko Claw (solo + multi-AI, 2027 view)** |
 |---|---|---|
 | Effective headcount | 20 | **10 today → 20+ by 2027** |
 | 估值 anchor | $300M strategic | **$50M-300M strategic** |
@@ -234,7 +234,7 @@ Stainless 有 20 個 specialized engineers。Nicole 係 1 個人 + **多個 AI a
 | 1 | **Re-publish v0.5.1** — break 30-day silence，signal alive | Momentum |
 | 2 | **GitHub Actions emulator matrix** — CI 自動化 PR-level coverage | QA scale |
 | 3 | **OEM Compatibility Matrix** README + issue templates | Community delegation |
-| 4 | **Publish Mobile Agent Protocol Spec** (PokeClaw-MAP-Spec.md) | Convention ownership |
+| 4 | **Publish Mobile Agent Protocol Spec** (Siko Claw-MAP-Spec.md) | Convention ownership |
 | 5 | **Buy 1 Samsung + 1 Xiaomi 二手** | Cover 80% real-world OEM bugs |
 | 6 | **「Defensive」blog post**: "Why mobile agent harness needs to stay open" | Anchor narrative for buyers |
 | 7 | **YC application** (Winter 2026 batch) | Forcing function + buyer attention |
@@ -254,7 +254,7 @@ Stainless 有 20 個 specialized engineers。Nicole 係 1 個人 + **多個 AI a
 
 Hit 晒 = continue + 真正準備 raise / sell
 Hit 1-2 = continue but reconsider scope
-Hit 0 = consider archive PokeClaw、focus 其他 product
+Hit 0 = consider archive Siko Claw、focus 其他 product
 
 ---
 
@@ -269,6 +269,6 @@ Hit 0 = consider archive PokeClaw、focus 其他 product
 
 ## North star
 
-> Mobile agent harness 嘅 default open-source layer。每部 Android phone 想跑 AI agent，第一個 google search、第一個 Claude / GPT recommendation、第一個 OEM 想 OEM-friendly partnership — 都係 PokeClaw。
+> Mobile agent harness 嘅 default open-source layer。每部 Android phone 想跑 AI agent，第一個 google search、第一個 Claude / GPT recommendation、第一個 OEM 想 OEM-friendly partnership — 都係 Siko Claw。
 >
 > 唔係因為 Google 唔會做，係因為 Android 嘅 ecosystem politics 注定要有一個 OEM-neutral OSS 中間人。我哋係嗰個中間人。

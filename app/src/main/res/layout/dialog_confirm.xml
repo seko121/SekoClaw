@@ -80,7 +80,7 @@
         android:orientation="horizontal">
 
         <!-- 取消按钮 -->
-        <io.agents.pokeclaw.widget.KButton
+        <com.sikoclaw.app.widget.KButton
             android:id="@+id/btnCancel"
             android:layout_width="0dp"
             android:layout_height="44dp"
@@ -95,7 +95,7 @@
             android:visibility="gone" />
 
         <!-- 确认按钮 -->
-        <io.agents.pokeclaw.widget.KButton
+        <com.sikoclaw.app.widget.KButton
             android:id="@+id/btnAction"
             android:layout_width="0dp"
             android:layout_height="44dp"
