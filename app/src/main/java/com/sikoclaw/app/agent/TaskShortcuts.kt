@@ -219,7 +219,7 @@ object TaskShortcuts {
                     "Screenshot taken."
                 } else {
                     XLog.w(TAG, "Shortcut: accessibility service not running for screenshot")
-                    "Screenshot requires Accessibility permission. Please enable Siko Claw in Accessibility settings."
+                    "Screenshot requires Accessibility permission. Please enable OctoBot in Accessibility settings."
                 }
             } else {
                 "Screenshot shortcut requires Android 9.0 or above."
@@ -260,7 +260,7 @@ object TaskShortcuts {
                 XLog.i(TAG, "Shortcut: pressed Back")
                 "Went back."
             } else {
-                "Back shortcut requires Accessibility permission. Please enable Siko Claw in Accessibility settings."
+                "Back shortcut requires Accessibility permission. Please enable OctoBot in Accessibility settings."
             }
         } catch (e: Exception) {
             XLog.w(TAG, "Shortcut: back failed — ${e.message}")
@@ -285,13 +285,11 @@ object TaskShortcuts {
     private fun launchAppByName(context: Context, appName: String): String? {
         return try {
             val pm = context.packageManager
-            val installedApps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
-
-            // Score each app: 2 points for exact match, 1 for contains
-            val candidate = installedApps
-                .filter { pm.getLaunchIntentForPackage(it.packageName) != null }
+            // Persistent inventory avoids repeatedly walking all installed apps.
+            // AppInventoryCache refreshes itself once if the requested app is absent.
+            val candidate = com.sikoclaw.app.tool.impl.AppInventoryCache.apps(context)
                 .mapNotNull { info ->
-                    val label = pm.getApplicationLabel(info).toString().lowercase()
+                    val label = info.label.lowercase()
                     val score = when {
                         label == appName -> 2
                         label.contains(appName) || appName.contains(label) -> 1
@@ -307,7 +305,7 @@ object TaskShortcuts {
                 return null // no match; caller proceeds with agent pipeline
             }
 
-            val displayLabel = pm.getApplicationLabel(candidate).toString()
+            val displayLabel = candidate.label
             val intent = pm.getLaunchIntentForPackage(candidate.packageName)!!
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(intent)

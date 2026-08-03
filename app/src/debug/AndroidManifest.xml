@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <application>
+        <!-- Debug-only export so automated emulator acceptance tests can open the sandbox directly. -->
+        <activity
+            android:name=".ui.settings.LinuxSandboxActivity"
+            android:exported="true"
+            tools:replace="android:exported" />
+    </application>
+</manifest>

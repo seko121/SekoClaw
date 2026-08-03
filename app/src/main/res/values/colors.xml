@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <color name="octobot_navy">#051431</color>
     <!-- Text -->
     <color name="colorTextPrimary">#F5000000</color>
     <color name="colorTextSecondary">#AD000000</color>

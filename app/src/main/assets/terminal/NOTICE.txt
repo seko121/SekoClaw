@@ -1,0 +1,15 @@
+OctoBot terminal third-party components
+
+BusyBox for Android NDK 1.36.1
+Source: https://github.com/Magisk-Modules-Repo/busybox-ndk
+Upstream: https://busybox.net/
+License: GNU General Public License v2
+
+OpenSSL 3.6.3 command and libraries, Android/aarch64 build
+Source package: https://github.com/termux/termux-packages
+Upstream: https://www.openssl.org/
+License: Apache License 2.0
+
+CA certificate bundle 2026.05.14
+Source package: https://github.com/termux/termux-packages
+Upstream: https://curl.se/docs/caextract.html

@@ -204,16 +204,13 @@ public class OpenAppTool extends BaseTool {
         }
         // Try to find by searching installed app labels AND package names
         try {
-            android.content.pm.PackageManager pm = ClawApplication.Companion.getInstance().getPackageManager();
             String bestMatch = null;
             int bestScore = 0;
-
-            for (android.content.pm.ApplicationInfo app : pm.getInstalledApplications(0)) {
-                // Skip system apps without launcher intent
-                if (pm.getLaunchIntentForPackage(app.packageName) == null) continue;
-
-                CharSequence label = pm.getApplicationLabel(app);
-                String labelStr = label != null ? label.toString().toLowerCase() : "";
+            // Reuse the persistent launcher inventory.  It refreshes only when
+            // the requested app is not in cache, avoiding a PackageManager scan
+            // for every phone-control planning step.
+            for (AppInventoryCache.Entry app : AppInventoryCache.apps(ClawApplication.Companion.getInstance())) {
+                String labelStr = app.label.toLowerCase();
                 String pkgLower = app.packageName.toLowerCase();
 
                 // Exact label match = best

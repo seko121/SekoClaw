@@ -26,7 +26,7 @@ object UserSkillStore {
     }
     fun loadIntoRegistry() { /* User skills are prompt skills, not unsafe blind deterministic macros. */ }
     fun ensureDefaults() {
-        if (KVUtils.getBoolean("DEFAULT_AGENT_SKILLS_V1", false)) { ensureMoreDefaults(); return }
+        if (KVUtils.getBoolean("DEFAULT_AGENT_SKILLS_V1", false)) { removeTerminalSkill(); ensureMoreDefaults(); return }
         val existing = all()
         val defaults = listOf(
             UserSkill("deep_web_research", "Deep Web Research", "Research current topics from multiple sources", "Plan focused searches, use web_search repeatedly, open the strongest sources, compare dates and claims, then answer with source URLs. Never invent a citation.", "research, search the web, latest, verify"),
@@ -38,17 +38,22 @@ object UserSkillStore {
         save(existing)
         KVUtils.putBoolean("DEFAULT_AGENT_SKILLS_V1", true)
         ensureMoreDefaults()
+        removeTerminalSkill()
     }
     private fun ensureMoreDefaults() {
         if (KVUtils.getBoolean("DEFAULT_AGENT_SKILLS_V2", false)) return
         val items=all()
         val more=listOf(
-            UserSkill("terminal_developer", "Terminal Developer", "Use Alpine Linux to inspect projects and run development commands", "Inspect the working directory first, use Alpine Linux, install only required packages with apk, make scoped changes, and run a relevant verification command before reporting completion.", "terminal, linux, code, build, git"),
             UserSkill("scheduled_automation", "Scheduled Automation", "Create and maintain recurring agent jobs", "Clarify the intended schedule, create or edit the cron job, validate the expression, show the next run time, and never delete or disable an existing job without confirmation.", "schedule, every day, cron, recurring"),
             UserSkill("mcp_connector", "MCP Connector", "Connect an MCP server and safely use its discovered tools", "Validate the HTTPS endpoint, connect and list discovered tools, explain what became available, then call only the minimum MCP tool required. Never expose bearer tokens.", "MCP, connect server, add integration"),
             UserSkill("systematic_troubleshooting", "Systematic Troubleshooting", "Diagnose failures using evidence before changing things", "Reproduce or inspect the error, collect logs and environment facts, form the smallest likely hypothesis, test it, then apply a scoped fix and verify the original flow.", "error, broken, not working, diagnose, fix")
         )
         more.filter{d->items.none{it.id==d.id}}.forEach(items::add);save(items);KVUtils.putBoolean("DEFAULT_AGENT_SKILLS_V2",true)
+    }
+    private fun removeTerminalSkill() {
+        val items = all()
+        items.removeAll { it.id == "terminal_developer" }
+        save(items)
     }
 }
 

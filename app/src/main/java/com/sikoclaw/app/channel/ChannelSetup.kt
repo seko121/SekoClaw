@@ -31,7 +31,7 @@ class ChannelSetup(
                 val app = ClawApplication.instance
                 val capabilityState = AppCapabilityCoordinator.accessibilityState(app)
                 if (capabilityState == ServiceBindingState.DISABLED) {
-                    ChannelManager.sendMessage(channel, "Accessibility service is not enabled. Please enable Siko Claw in Settings > Accessibility.", messageID)
+                    ChannelManager.sendMessage(channel, "Accessibility service is not enabled. Please enable OctoBot in Settings > Accessibility.", messageID)
                     ChannelManager.flushMessages(channel)
                     return
                 }
@@ -39,11 +39,11 @@ class ChannelSetup(
                 if (!ClawAccessibilityService.awaitRunning(waitMs)) {
                     val error = when (AppCapabilityCoordinator.accessibilityState(app)) {
                         ServiceBindingState.DISABLED ->
-                            "Accessibility service is not enabled. Please enable Siko Claw in Settings > Accessibility."
+                            "Accessibility service is not enabled. Please enable OctoBot in Settings > Accessibility."
                         ServiceBindingState.CONNECTING ->
                             "Accessibility is still reconnecting. Please try again in a few seconds."
                         ServiceBindingState.DEGRADED ->
-                            "Accessibility disconnected. Please re-open Siko Claw or re-enable Accessibility."
+                            "Accessibility disconnected. Please re-open OctoBot or re-enable Accessibility."
                         ServiceBindingState.READY ->
                             app.getString(R.string.channel_msg_no_accessibility)
                     }

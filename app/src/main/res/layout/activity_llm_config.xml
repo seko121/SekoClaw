@@ -282,6 +282,7 @@
 
             <!-- Cloud LLM -->
             <TextView
+                android:id="@+id/legacyCloudTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
@@ -293,6 +294,7 @@
                 android:textStyle="bold" />
 
             <androidx.cardview.widget.CardView
+                android:id="@+id/legacyCloudCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="24dp"
@@ -479,9 +481,13 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:text="Compatible with: OpenRouter, Groq, Together AI, Ollama, any OpenAI-compatible endpoint"
-                        android:textColor="@color/colorTextTertiary"
-                        android:textSize="10dp"
+                        android:background="@drawable/bg_edit_text"
+                        android:gravity="center"
+                        android:minHeight="48dp"
+                        android:paddingHorizontal="12dp"
+                        android:text="Manage multiple providers and models"
+                        android:textColor="@color/colorBrandPrimary"
+                        android:textSize="13sp"
                         android:visibility="gone" />
 
                 </LinearLayout>

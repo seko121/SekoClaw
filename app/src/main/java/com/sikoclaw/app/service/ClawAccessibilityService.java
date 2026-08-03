@@ -41,17 +41,28 @@ public class ClawAccessibilityService extends AccessibilityService {
 
     private static final String TAG = "ClawA11yService";
     private static volatile ClawAccessibilityService instance;
+    private static volatile long lastServiceHeartbeatMs;
+    private final Handler lifecycleHeartbeatHandler = new Handler(Looper.getMainLooper());
+    private final Runnable lifecycleHeartbeat = new Runnable() {
+        @Override public void run() {
+            if (instance == ClawAccessibilityService.this) {
+                lastServiceHeartbeatMs = System.currentTimeMillis();
+                KVUtils.INSTANCE.noteAccessibilityHeartbeat();
+                lifecycleHeartbeatHandler.postDelayed(this, 5_000L);
+            }
+        }
+    };
 
     public static ClawAccessibilityService getInstance() {
         return instance;
     }
 
     public static boolean isRunning() {
-        return instance != null;
+        return instance != null && System.currentTimeMillis() - lastServiceHeartbeatMs < 15_000L;
     }
 
     /**
-     * Checks whether Siko Claw is enabled in Android's Accessibility settings.
+     * Checks whether OctoBot is enabled in Android's Accessibility settings.
      * This does NOT mean the service is connected — use {@link #isRunning()} for that.
      * Use this to distinguish "not enabled" (user action needed) from "enabled but
      * still binding" (just wait).
@@ -120,9 +131,13 @@ public class ClawAccessibilityService extends AccessibilityService {
     public void onServiceConnected() {
         super.onServiceConnected();
         instance = this;
+        lastServiceHeartbeatMs = System.currentTimeMillis();
+        lifecycleHeartbeatHandler.removeCallbacks(lifecycleHeartbeat);
+        lifecycleHeartbeatHandler.post(lifecycleHeartbeat);
         KVUtils.INSTANCE.noteAccessibilityConnected();
         KVUtils.INSTANCE.noteAccessibilityHeartbeat();
         XLog.i(TAG, "Accessibility service connected");
+        AgentControlOverlay.attach(this);
         ForegroundService.Companion.syncToBackgroundState(this);
         maybeReturnToAppAfterPermissionFlow();
     }
@@ -130,6 +145,15 @@ public class ClawAccessibilityService extends AccessibilityService {
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
         KVUtils.INSTANCE.noteAccessibilityHeartbeat();
+        // Invalidate the micro-cache whenever Android reports a window/content change.
+        // This keeps the speed benefit within one planning step without reusing stale nodes.
+        if (event != null && (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
+                || event.getEventType() == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
+                || event.getEventType() == AccessibilityEvent.TYPE_VIEW_SCROLLED
+                || event.getEventType() == AccessibilityEvent.TYPE_VIEW_CLICKED)) {
+            cachedScreenTree = null;
+            cachedScreenTreeAt = 0L;
+        }
         // Debug: log notification events from messaging apps
         if (event != null && event.getEventType() == AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED) {
             XLog.d(TAG, "Notification event from: " + event.getPackageName());
@@ -144,15 +168,30 @@ public class ClawAccessibilityService extends AccessibilityService {
 
     @Override
     public void onInterrupt() {
+        AgentControlSession.stop(true);
         KVUtils.INSTANCE.noteAccessibilityInterrupted();
         XLog.w(TAG, "Accessibility service interrupted");
         ForegroundService.Companion.syncToBackgroundState(this);
     }
 
     @Override
+    public boolean onUnbind(Intent intent) {
+        XLog.w(TAG, "Accessibility service unbound by Android");
+        lifecycleHeartbeatHandler.removeCallbacks(lifecycleHeartbeat);
+        if (instance == this) instance = null;
+        AgentControlSession.stop(true);
+        AgentControlOverlay.detach();
+        KVUtils.INSTANCE.noteAccessibilityDisconnected();
+        return super.onUnbind(intent);
+    }
+
+    @Override
     public void onDestroy() {
+        lifecycleHeartbeatHandler.removeCallbacks(lifecycleHeartbeat);
         super.onDestroy();
+        AgentControlSession.stop(true);
         instance = null;
+        AgentControlOverlay.detach();
         KVUtils.INSTANCE.noteAccessibilityDisconnected();
         XLog.i(TAG, "Accessibility service destroyed");
         ForegroundService.Companion.syncToBackgroundState(this);
@@ -160,7 +199,7 @@ public class ClawAccessibilityService extends AccessibilityService {
 
     /**
      * Android Settings keeps its own back stack during the Accessibility enable flow.
-     * When the user came here from Siko Claw Settings, unwind that stack once, then
+     * When the user came here from OctoBot Settings, unwind that stack once, then
      * explicitly surface the app Settings screen again.
      */
     private void maybeReturnToAppAfterPermissionFlow() {
@@ -210,6 +249,7 @@ public class ClawAccessibilityService extends AccessibilityService {
     }
 
     public boolean performTap(int x, int y, long durationMs) {
+        AgentControlOverlay.showGesture(x, y);
         Path path = new Path();
         path.moveTo(x, y);
         GestureDescription.StrokeDescription stroke =
@@ -224,6 +264,7 @@ public class ClawAccessibilityService extends AccessibilityService {
      * Performs a long press at the given screen coordinates.
      */
     public boolean performLongPress(int x, int y, long durationMs) {
+        AgentControlOverlay.showGesture(x, y);
         Path path = new Path();
         path.moveTo(x, y);
         GestureDescription.StrokeDescription stroke =
@@ -238,6 +279,7 @@ public class ClawAccessibilityService extends AccessibilityService {
      * Performs a swipe gesture from (startX, startY) to (endX, endY).
      */
     public boolean performSwipe(int startX, int startY, int endX, int endY, long durationMs) {
+        AgentControlOverlay.showGesture(startX, startY);
         Path path = new Path();
         path.moveTo(startX, startY);
         path.lineTo(endX, endY);
@@ -374,8 +416,14 @@ public class ClawAccessibilityService extends AccessibilityService {
     /** Node ID → center coordinates mapping for tap_node tool */
     private final java.util.concurrent.ConcurrentHashMap<String, int[]> nodeIdMap = new java.util.concurrent.ConcurrentHashMap<>();
     private final java.util.concurrent.atomic.AtomicInteger nodeCounter = new java.util.concurrent.atomic.AtomicInteger(0);
+    private volatile String cachedScreenTree;
+    private volatile long cachedScreenTreeAt;
 
     public String getScreenTree() {
+        long now = System.currentTimeMillis();
+        if (cachedScreenTree != null && now - cachedScreenTreeAt < 350L) {
+            return cachedScreenTree;
+        }
         AccessibilityNodeInfo root = getRootInActiveWindow();
         if (root == null) {
             return null;
@@ -384,7 +432,9 @@ public class ClawAccessibilityService extends AccessibilityService {
         nodeCounter.set(0);
         StringBuilder sb = new StringBuilder();
         buildNodeTree(root, sb, 0);
-        return sb.toString();
+        cachedScreenTree = sb.toString();
+        cachedScreenTreeAt = now;
+        return cachedScreenTree;
     }
 
     /** Get center coordinates for a node ID (e.g. "n3"). Returns null if not found. */
@@ -732,7 +782,7 @@ public class ClawAccessibilityService extends AccessibilityService {
                 @SuppressWarnings("deprecation")
                 android.os.PowerManager.WakeLock wl = pm.newWakeLock(
                         android.os.PowerManager.SCREEN_DIM_WAKE_LOCK | android.os.PowerManager.ACQUIRE_CAUSES_WAKEUP,
-                        "Siko Claw:unlock"
+                        "OctoBot:unlock"
                 );
                 wl.acquire(3000);
                 wl.release();

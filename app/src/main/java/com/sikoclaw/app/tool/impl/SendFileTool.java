@@ -54,21 +54,26 @@ public class SendFileTool extends BaseTool {
     @Override
     public ToolResult execute(Map<String, Object> params) {
         android.content.Context ctx = ClawApplication.Companion.getInstance();
-        // Check storage permission
-        if (!hasStoragePermission()) {
-            return ToolResult.error(ctx.getString(R.string.tool_no_storage_permission));
-        }
-
         String filePath = requireString(params, "file_path");
-        File file = new File(filePath);
+        // Files may originate in Android storage, OctoBot's workspace, or the Linux
+        // sandbox. Export them to the attachment cache before exposing a URI.
+        // This is synchronous: success is returned only after the chat rendered it.
+        try {
+            com.sikoclaw.app.ui.chat.ChatAttachment attachment =
+                    com.sikoclaw.app.files.AgentFileManager.createChatAttachmentOrThrow(ctx, filePath);
+            if (com.sikoclaw.app.floating.SharedChatBus.INSTANCE.offerAttachment(attachment)) {
+                return ToolResult.success(ctx.getString(R.string.tool_file_sent, attachment.getName()));
+            }
+            return ToolResult.error("File was prepared but the active chat did not attach it.");
+        } catch (Exception error) {
+            return ToolResult.error("Could not prepare file attachment: " + error.getMessage());
+        }
 
-        if (!file.exists()) {
-            return ToolResult.error(ctx.getString(R.string.tool_file_not_found, filePath));
-        }
-        if (!file.isFile()) {
-            return ToolResult.error(ctx.getString(R.string.tool_not_a_file, filePath));
-        }
-        if (!file.canRead()) {
+        /* External-channel fallback intentionally remains below for legacy channel
+           tasks; it is only reached by code paths which do not have an active chat. */
+        /*
+
+        if (!hasStoragePermission()) {
             return ToolResult.error(ctx.getString(R.string.tool_no_storage_permission));
         }
 
@@ -86,6 +91,7 @@ public class SendFileTool extends BaseTool {
         } catch (Exception e) {
             return ToolResult.error(ctx.getString(R.string.tool_file_send_failed, e.getMessage()));
         }
+        */
     }
 
     private boolean hasStoragePermission() {

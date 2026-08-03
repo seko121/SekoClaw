@@ -1,0 +1,14 @@
+OctoBot includes Linux Sandbox code adapted from Kai.
+Kai Copyright Simon Schubert and contributors.
+Kai source: https://github.com/SimonSchubert/Kai
+Licensed under the Apache License, Version 2.0.
+
+Modified for OctoBot: Android package names, dependency injection,
+application navigation, theme integration, and OctoBot agent tool adapters.
+
+The bundled PRoot binaries are from the Termux PRoot fork and are licensed
+under GPL-2.0. PRoot runs as a separate process and is not linked into the app.
+Source: https://github.com/termux/proot
+
+The bundled talloc library is licensed under LGPL-3.0.
+Source: https://talloc.samba.org/

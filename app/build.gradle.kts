@@ -54,10 +54,11 @@ android {
         applicationId = "com.sikoclaw.app"
         minSdk = 28
         targetSdk = 36
-        versionCode = readLocalOrEnvInt("SIKOCLAW_VERSION_CODE", 29)
-        versionName = readLocalOrEnvString("SIKOCLAW_VERSION_NAME", "0.7.1")
+        ndk { abiFilters += listOf("arm64-v8a") }
+        versionCode = readLocalOrEnvInt("SIKOCLAW_VERSION_CODE", 31)
+        versionName = readLocalOrEnvString("SIKOCLAW_VERSION_NAME", "0.7.3")
         buildConfigField("String", "VERSION_INFO", getVersionGit())
-        buildConfigField("String", "APP_ORIGIN", "\"Siko Claw | based on PokeClaw by agents.io\"")
+        buildConfigField("String", "APP_ORIGIN", "\"OctoBot | Apache 2.0 open-source Android agent\"")
         buildConfigField("String", "BUILD_FINGERPRINT", "\"${getBuildFingerprint()}\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -65,6 +66,7 @@ android {
 
     buildTypes {
         getByName("debug") {
+            ndk { abiFilters += listOf("x86_64") }
             isMinifyEnabled = false
             isShrinkResources = false
             proguardFiles(
@@ -75,8 +77,8 @@ android {
 
         release {
             signingConfig = signingConfigs.getByName("release")
-            isMinifyEnabled = true
-            isShrinkResources = true
+            isMinifyEnabled = false
+            isShrinkResources = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -96,6 +98,10 @@ android {
     }
 
     packaging {
+        jniLibs {
+            // BusyBox is executed from Android's trusted native-library directory.
+            useLegacyPackaging = true
+        }
         resources {
             excludes += setOf(
                 "META-INF/DEPENDENCIES",
@@ -130,6 +136,15 @@ dependencies {
     }
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
+    // Kai Linux Sandbox downloader (kept on Kai's Ktor/OkHttp implementation).
+    implementation("io.ktor:ktor-client-core:3.5.1")
+    implementation("io.ktor:ktor-client-okhttp:3.5.1")
+    implementation("org.apache.commons:commons-compress:1.27.1")
+    implementation("org.mozilla.geckoview:geckoview:152.0.20260713164047")
+    implementation("io.noties.markwon:core:4.6.2")
+    implementation("io.noties.markwon:ext-strikethrough:4.6.2")
+    implementation("com.tom-roush:pdfbox-android:2.0.27.0")
+    implementation("com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava")
     implementation(libs.retrofit)
     implementation(libs.retrofit.gson)
     implementation(libs.utilcode)
@@ -152,6 +167,8 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
+    implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:0.5.1")
+    implementation("com.termux.termux-app:terminal-view:0.118.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
 
     // LiteRT-LM on-device LLM inference (Google AI Edge)
@@ -193,7 +210,7 @@ androidComponents {
         variant.outputs.forEach { output ->
             if (output is com.android.build.api.variant.impl.VariantOutputImpl) {
                 val versionName = android.defaultConfig.versionName ?: "0.0.0"
-                val fileName = "SikoClaw_v${versionName}_${getDateTime()}.apk"
+                val fileName = "OctoBot_v${versionName}_${getDateTime()}.apk"
                 println("output file name: $fileName")
                 output.outputFileName.set(fileName)
             }

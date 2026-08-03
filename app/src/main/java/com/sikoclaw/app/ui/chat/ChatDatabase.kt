@@ -87,14 +87,16 @@ class ChatDatabase(context: Context) : SQLiteOpenHelper(context, "sikoclaw.db", 
     fun search(query: String): List<SearchResult> {
         val db = readableDatabase
         val results = mutableListOf<SearchResult>()
+        val like = "%${query.trim().replace("%", "\\%").replace("_", "\\_")}%"
         val cursor = db.rawQuery("""
-            SELECT m.content, m.role, c.title, c.id, c.file_path
-            FROM messages m
-            JOIN conversations c ON m.conversation_id = c.id
-            WHERE m.content LIKE ?
-            ORDER BY m.timestamp DESC
-            LIMIT 50
-        """, arrayOf("%$query%"))
+            SELECT COALESCE(m.content, ''), COALESCE(m.role, ''), c.title, c.id, c.file_path,
+                   COALESCE(m.timestamp, c.updated)
+            FROM conversations c
+            LEFT JOIN messages m ON m.conversation_id = c.id
+            WHERE c.title LIKE ? ESCAPE '\' OR m.content LIKE ? ESCAPE '\'
+            ORDER BY COALESCE(m.timestamp, c.updated) DESC
+            LIMIT 80
+        """, arrayOf(like, like))
 
         while (cursor.moveToNext()) {
             results.add(SearchResult(
@@ -102,7 +104,8 @@ class ChatDatabase(context: Context) : SQLiteOpenHelper(context, "sikoclaw.db", 
                 role = cursor.getString(1),
                 conversationTitle = cursor.getString(2),
                 conversationId = cursor.getString(3),
-                filePath = cursor.getString(4)
+                filePath = cursor.getString(4),
+                messageTimestamp = cursor.getLong(5),
             ))
         }
         cursor.close()
@@ -120,27 +123,18 @@ class ChatDatabase(context: Context) : SQLiteOpenHelper(context, "sikoclaw.db", 
             FROM conversations
             ORDER BY updated DESC
         """, null)
-
         while (cursor.moveToNext()) {
             results.add(ConversationIndex(
-                id = cursor.getString(0),
-                title = cursor.getString(1),
-                created = cursor.getLong(2),
-                model = cursor.getString(3) ?: "",
-                filePath = cursor.getString(4) ?: "",
-                messageCount = cursor.getInt(5),
-                lastMessage = cursor.getString(6) ?: "",
-                updated = cursor.getLong(7)
+                id = cursor.getString(0), title = cursor.getString(1), created = cursor.getLong(2),
+                model = cursor.getString(3) ?: "", filePath = cursor.getString(4) ?: "",
+                messageCount = cursor.getInt(5), lastMessage = cursor.getString(6) ?: "", updated = cursor.getLong(7)
             ))
         }
         cursor.close()
         return results
     }
 
-    /**
-     * Delete a conversation from index.
-     */
-    fun deleteConversation(id: String) {
+    /** Delete a conversation from index. */    fun deleteConversation(id: String) {
         val db = writableDatabase
         db.delete("messages", "conversation_id = ?", arrayOf(id))
         db.delete("conversations", "id = ?", arrayOf(id))
@@ -151,7 +145,8 @@ class ChatDatabase(context: Context) : SQLiteOpenHelper(context, "sikoclaw.db", 
         val role: String,
         val conversationTitle: String,
         val conversationId: String,
-        val filePath: String
+        val filePath: String,
+        val messageTimestamp: Long,
     )
 
     data class ConversationIndex(

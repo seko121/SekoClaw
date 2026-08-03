@@ -22,3 +22,12 @@ CLAUDE.local.md
 thoughts/
 .claudeignore
 /.kotlin/
+
+# Local source audits, downloaded runtime archives, and build handoffs.
+/.audit-dicio/
+/.audit-sanna/
+/.tmp-kai-current/
+/.tmp-ubuntu-audit/
+/OctoBot-latest.apk
+/claw/.idea/
+/agent.xml

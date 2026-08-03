@@ -17,10 +17,20 @@ sealed class TaskEvent {
     data class Response(val text: String, val modelName: String? = null) : TaskEvent()
 
     /** A tool is being executed (e.g. "Send Message", "Open App"). */
-    data class ToolAction(val toolName: String) : TaskEvent()
+    data class ToolAction(
+        val toolName: String,
+        val callId: String = toolName,
+        val parameters: String = "",
+        val rawToolName: String = toolName,
+    ) : TaskEvent()
 
     /** Tool execution result. */
-    data class ToolResult(val toolName: String, val success: Boolean, val detail: String) : TaskEvent()
+    data class ToolResult(
+        val toolName: String,
+        val success: Boolean,
+        val detail: String,
+        val callId: String = toolName,
+    ) : TaskEvent()
 
     /** Agent loop started a new round. */
     data class LoopStart(val round: Int) : TaskEvent()
@@ -48,6 +58,9 @@ sealed class TaskEvent {
     /** Task blocked by system dialog. */
     object Blocked : TaskEvent()
 
-    /** Thinking/content stream from LLM (non-streaming mode). */
-    data class Thinking(val content: String) : TaskEvent()
+    /** A visible assistant-content delta. Never contains private reasoning. */
+    data class ContentDelta(val content: String) : TaskEvent()
+
+    /** Optional reasoning delta, rendered only when the user enabled thought visibility. */
+    data class ReasoningDelta(val content: String) : TaskEvent()
 }

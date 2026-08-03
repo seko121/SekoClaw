@@ -222,12 +222,11 @@ object AppCapabilityCoordinator {
             }
             AppRequirement.STORAGE -> {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    launch(
-                        context,
-                        Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
-                            data = "package:${context.packageName}".toUri()
-                        }
-                    )
+                    val appIntent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                        data = "package:${context.packageName}".toUri()
+                    }
+                    runCatching { launch(context, appIntent) }
+                        .recoverCatching { launch(context, Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)) }
                 }
             }
             AppRequirement.NOTIFICATION_PERMISSION -> Unit

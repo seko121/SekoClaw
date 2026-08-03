@@ -254,7 +254,7 @@ class DefaultAgentService : AgentService {
         val appName = try {
             val appInfo = app.packageManager.getApplicationInfo(app.packageName, 0)
             app.packageManager.getApplicationLabel(appInfo).toString()
-        } catch (_: Exception) { "Siko Claw" }
+        } catch (_: Exception) { "OctoBot" }
         sb.append("\n## This App Info\n")
         sb.append("- App Name: ").append(appName).append("\n")
         sb.append("- Package Name: ").append(app.packageName).append("\n")
@@ -546,6 +546,12 @@ class DefaultAgentService : AgentService {
         while (iterations < maxIterations && !cancelled.get()) {
             iterations++
             callback.onLoopStart(iterations)
+
+            // User steering is injected only at a safe checkpoint, never while a tool is mid-write.
+            AgentSteeringBus.drainSteering().forEach { instruction ->
+                messages.add(UserMessage.from("[Steering instruction from the user] $instruction\nAdapt the current task immediately. Do not restart completed work."))
+                XLog.i(TAG, "Applied steering instruction at iteration $iterations (${instruction.length} chars)")
+            }
 
             // Compress history messages before sending to save tokens
             compressHistoryForSend(messages)

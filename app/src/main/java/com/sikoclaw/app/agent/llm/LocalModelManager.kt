@@ -31,6 +31,8 @@ object LocalModelManager {
         val fileName: String,
         val sizeBytes: Long,
         val minRamGb: Int,
+        val defaultContextTokens: Int = 4096,
+        val maxContextTokens: Int = 32768,
         /** True when this model came from the user-supplied custom URL (#36).
          *  Custom models skip strict size-bound validation since we don't know
          *  the expected size up front. */
@@ -90,6 +92,23 @@ object LocalModelManager {
             fileName = "gemma-4-E4B-it.litertlm",
             sizeBytes = 3_650_000_000L,
             minRamGb = 10
+        ),
+        ModelInfo(
+            id = "gemma4-12b",
+            displayName = "Gemma 4 12B — 6.5GB",
+            url = "https://huggingface.co/litert-community/gemma-4-12B-it-litert-lm/resolve/main/gemma-4-12B-it.litertlm",
+            fileName = "gemma-4-12B-it.litertlm",
+            sizeBytes = 6_547_589_312L,
+            minRamGb = 16,
+            defaultContextTokens = 8192,
+        ),
+        ModelInfo(
+            id = "qwen3-0.6b",
+            displayName = "Qwen3 0.6B — 614MB",
+            url = "https://huggingface.co/litert-community/Qwen3-0.6B/resolve/main/Qwen3-0.6B.litertlm",
+            fileName = "Qwen3-0.6B.litertlm",
+            sizeBytes = 614_236_160L,
+            minRamGb = 4,
         ),
     )
 
@@ -535,7 +554,7 @@ object LocalModelManager {
             // Rename temp to final
             if (targetFile.exists()) targetFile.delete()
             if (!tempFile.renameTo(targetFile)) {
-                callback.onError("Download finished but Siko Claw could not move the model into place")
+                callback.onError("Download finished but OctoBot could not move the model into place")
                 return
             }
 

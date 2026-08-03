@@ -4,15 +4,15 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/colorBgPrimary">
+    android:background="@color/octobot_navy">
 
     <!-- Logo -->
     <com.google.android.material.imageview.ShapeableImageView
         android:id="@+id/ivLogo"
         android:layout_width="80dp"
         android:layout_height="80dp"
-        android:src="@drawable/ic_launcher"
-        android:scaleType="centerCrop"
+        android:src="@drawable/octobot_idle"
+        android:scaleType="fitCenter"
         app:shapeAppearanceOverlay="@style/ShapeAppearance.Launcher.Large"
         app:layout_constraintBottom_toTopOf="@id/tvAppName"
         app:layout_constraintEnd_toEndOf="parent"

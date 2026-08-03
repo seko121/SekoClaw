@@ -269,13 +269,13 @@ class LocalLlmClient(private val config: AgentConfig) : LlmClient {
                 }
                 if (converted.isNotEmpty()) {
                     XLog.i(TAG, "parseResponse: ${converted.size} native tool calls from SDK")
-                    val text = response.contents?.toString()?.trim()?.ifEmpty { null }
+                    val text = stripKaiThinkBlocks(response.contents?.toString().orEmpty()).ifEmpty { null }
                     return LlmResponse(text = text, toolExecutionRequests = converted)
                 }
             }
         }
 
-        val responseText = response?.toString() ?: ""
+        val responseText = stripKaiThinkBlocks(response?.toString().orEmpty())
 
         // Fallback: extract tool calls from text (for prompt-based tool calling)
         val toolCalls = extractToolCalls(responseText)
@@ -570,6 +570,9 @@ Rules:
         private val FUNCTION_CALL_PATTERN = Regex("""(?:functioncall|function_call|tool_call)\s*:\s*(\{.*?\})""", RegexOption.DOT_MATCHES_ALL)
     }
 }
+
+private val KAI_THINK_BLOCK_REGEX = Regex("(?s)<think>.*?</think>")
+private fun stripKaiThinkBlocks(value: String): String = KAI_THINK_BLOCK_REGEX.replace(value, "").trim()
 
 /**
  * Wraps a LangChain4j ToolSpecification as a LiteRT-LM OpenApiTool.

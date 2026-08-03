@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="vertical" android:gravity="end">
+ <ImageView android:id="@+id/assistantBubble" android:layout_width="56dp" android:layout_height="56dp" android:padding="3dp" android:background="@drawable/browser_address_background" android:src="@drawable/octobot_idle" android:scaleType="centerCrop" android:contentDescription="Floating OctoBot" />
+ <LinearLayout android:id="@+id/assistantPanel" android:layout_width="320dp" android:layout_height="420dp" android:visibility="gone" android:orientation="vertical" android:padding="10dp" android:background="@drawable/browser_address_background">
+  <LinearLayout android:id="@+id/assistantDragHandle" android:layout_width="match_parent" android:layout_height="48dp" android:gravity="center_vertical" android:orientation="horizontal">
+   <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="OctoBot" android:textColor="#F3F8FF" android:textStyle="bold" android:textSize="16sp" />
+   <ImageButton android:id="@+id/assistantStop" android:layout_width="44dp" android:layout_height="44dp" android:background="?android:attr/selectableItemBackgroundBorderless" android:src="@android:drawable/ic_media_pause" android:contentDescription="Stop agent" />
+   <ImageButton android:id="@+id/assistantCall" android:layout_width="44dp" android:layout_height="44dp" android:background="?android:attr/selectableItemBackgroundBorderless" android:src="@android:drawable/ic_btn_speak_now" android:contentDescription="Continue voice agent" />
+   <ImageButton android:id="@+id/assistantExpand" android:layout_width="44dp" android:layout_height="44dp" android:background="?android:attr/selectableItemBackgroundBorderless" android:src="@android:drawable/ic_menu_view" android:contentDescription="Open full chat" />
+   <ImageButton android:id="@+id/assistantCollapse" android:layout_width="44dp" android:layout_height="44dp" android:background="?android:attr/selectableItemBackgroundBorderless" android:src="@android:drawable/arrow_down_float" android:contentDescription="Collapse" />
+  </LinearLayout>
+  <TextView android:id="@+id/assistantStatus" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingHorizontal="8dp" android:paddingBottom="6dp" android:text="Ready" android:textColor="#60A5FA" android:textSize="12sp" />
+  <ScrollView android:id="@+id/assistantMessageScroll" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:fillViewport="true" android:scrollbars="vertical">
+   <LinearLayout android:id="@+id/assistantMessages" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="8dp" />
+  </ScrollView>
+  <LinearLayout android:layout_width="match_parent" android:layout_height="56dp" android:orientation="horizontal" android:gravity="center_vertical">
+   <EditText android:id="@+id/assistantInput" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:hint="Message OctoBot" android:textColor="#F3F8FF" android:textColorHint="#8294AA" android:singleLine="true" />
+   <ImageButton android:id="@+id/assistantSend" android:layout_width="48dp" android:layout_height="48dp" android:src="@android:drawable/ic_menu_send" android:background="?android:attr/selectableItemBackgroundBorderless" android:contentDescription="Send" />
+  </LinearLayout>
+ </LinearLayout>
+</LinearLayout>

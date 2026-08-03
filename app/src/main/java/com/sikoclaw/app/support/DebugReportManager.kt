@@ -65,7 +65,7 @@ object DebugReportManager {
             nowMs = System.currentTimeMillis(),
         )
         return buildString {
-            appendLine("Siko Claw Debug Report")
+            appendLine("OctoBot Debug Report")
             appendLine("Generated: ${Date()}")
             appendLine()
             appendLine("App")
@@ -140,7 +140,7 @@ object DebugReportManager {
 
     private fun buildBugReportTemplate(context: Context): String {
         return buildString {
-            appendLine("Siko Claw Bug Report Template")
+            appendLine("OctoBot Bug Report Template")
             appendLine()
             appendLine("Attach this ZIP and fill in the blanks below:")
             appendLine()
@@ -158,7 +158,7 @@ object DebugReportManager {
             appendLine("adb shell dumpsys activity top > sikoclaw-activity-top.txt")
             appendLine("adb shell dumpsys activity services com.sikoclaw.app > sikoclaw-services.txt")
             appendLine()
-            appendLine("Open a new GitHub issue: https://github.com/agents-io/PokeClaw/issues/new")
+            appendLine("Open a new GitHub issue: https://github.com/seko121/SekoClaw/issues/new")
             appendLine("Built on: ${Date()}")
             appendLine("Package: ${context.packageName}")
         }

@@ -64,6 +64,18 @@ class OpenAiLlmClient(
         toolSpecs: List<ToolSpecification>,
         listener: StreamingListener
     ): LlmResponse {
+        // Kai's built-in Free endpoint is OpenAI-compatible for ordinary chat,
+        // but intentionally does not expose an SSE stream. Sending it through
+        // OpenAiStreamingChatModel made the default model look selected while
+        // every message failed with "OpenAI streaming error". Use the working
+        // synchronous endpoint and progressively reveal its final text so the
+        // conversation keeps the same live typing UX.
+        if (config.baseUrl.contains("api.kai9000.com", ignoreCase = true)) {
+            val response = chat(messages, toolSpecs)
+            response.text.orEmpty().chunked(12).forEach(listener::onPartialText)
+            listener.onComplete(response)
+            return response
+        }
         val request = ChatRequest.builder()
             .messages(messages)
             .toolSpecifications(toolSpecs)

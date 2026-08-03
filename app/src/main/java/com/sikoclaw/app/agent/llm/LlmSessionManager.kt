@@ -37,24 +37,25 @@ object LlmSessionManager {
         }
 
         val cloud = config.activeCloud
-        if (cloud.apiKey.isEmpty()) {
+        if (cloud.requiresApiKey && cloud.apiKey.isEmpty()) {
             XLog.w(TAG, "createCloudChatModel: no API key configured")
             return null
         }
 
         XLog.d(TAG, "createCloudChatModel: provider=${cloud.providerName}, model=${cloud.modelName}, baseUrl=${cloud.resolvedBaseUrl}")
         return when (cloud.agentProvider) {
+            com.sikoclaw.app.agent.LlmProvider.GEMINI -> null
             com.sikoclaw.app.agent.LlmProvider.ANTHROPIC -> AnthropicChatModel.builder()
-                .httpClientBuilder(OkHttpClientBuilderAdapter())
-                .apiKey(cloud.apiKey)
+                .httpClientBuilder(OkHttpClientBuilderAdapter().setCustomHeaders(cloud.headers))
+                .apiKey(cloud.apiKey.ifEmpty { "siko-local" })
                 .modelName(cloud.modelName)
                 .baseUrl(cloud.resolvedBaseUrl)
                 .temperature(temperature)
                 .build()
 
             else -> OpenAiChatModel.builder()
-                .httpClientBuilder(OkHttpClientBuilderAdapter())
-                .apiKey(cloud.apiKey)
+                .httpClientBuilder(OkHttpClientBuilderAdapter().setCustomHeaders(cloud.headers))
+                .apiKey(cloud.apiKey.ifEmpty { "siko-local" })
                 .modelName(cloud.modelName.ifEmpty { "gpt-4o-mini" })
                 .baseUrl(cloud.resolvedBaseUrl.ifEmpty { "https://api.openai.com/v1" })
                 .temperature(temperature)
@@ -69,7 +70,7 @@ object LlmSessionManager {
         val config = ModelConfigRepository.snapshot()
         if (config.activeMode == ActiveModelMode.LOCAL) return null
         val cloud = config.activeCloud
-        if (cloud.apiKey.isEmpty() || cloud.modelName.isEmpty()) {
+        if ((cloud.requiresApiKey && cloud.apiKey.isEmpty()) || cloud.modelName.isEmpty()) {
             XLog.w(TAG, "createCloudClient: incomplete cloud config")
             return null
         }
@@ -101,6 +102,9 @@ object LlmSessionManager {
      */
     fun singleShotCloud(prompt: String, temperature: Double = 0.7): String? {
         return try {
+            if (ModelConfigRepository.snapshot().activeCloud.agentProvider == com.sikoclaw.app.agent.LlmProvider.GEMINI) {
+                return createCloudClient(temperature)?.chat(listOf(UserMessage.from(prompt)), emptyList())?.text
+            }
             val chatModel = createCloudChatModel(temperature) ?: return null
             val messages = listOf<ChatMessage>(UserMessage.from(prompt))
             val request = ChatRequest.builder().messages(messages).build()
@@ -117,6 +121,9 @@ object LlmSessionManager {
      */
     fun singleShotCloud(systemPrompt: String, userPrompt: String, temperature: Double = 0.7): String? {
         return try {
+            if (ModelConfigRepository.snapshot().activeCloud.agentProvider == com.sikoclaw.app.agent.LlmProvider.GEMINI) {
+                return createCloudClient(temperature)?.chat(listOf(SystemMessage.from(systemPrompt), UserMessage.from(userPrompt)), emptyList())?.text
+            }
             val chatModel = createCloudChatModel(temperature) ?: return null
             val messages = listOf<ChatMessage>(
                 SystemMessage.from(systemPrompt),

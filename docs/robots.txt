@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://agents-io.github.io/Siko Claw/sitemap.xml
+Sitemap: https://agents-io.github.io/OctoBot/sitemap.xml

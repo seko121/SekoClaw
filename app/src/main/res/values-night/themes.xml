@@ -31,9 +31,9 @@
 
     <!-- 启动页专用主题：冷启动 Window 直接显示纯色背景，无白屏无系统 Logo -->
     <style name="Theme.SikoClaw.Splash" parent="Theme.SikoClaw">
-        <item name="android:windowBackground">@color/colorBgPrimary</item>
+        <item name="android:windowBackground">@color/octobot_navy</item>
         <!-- Android 12+ 禁用系统 SplashScreen 的图标 -->
-        <item name="android:windowSplashScreenAnimatedIcon">@android:color/transparent</item>
-        <item name="android:windowSplashScreenBackground">@color/colorBgPrimary</item>
+        <item name="android:windowSplashScreenAnimatedIcon" tools:targetApi="31">@drawable/octobot_launcher_foreground</item>
+        <item name="android:windowSplashScreenBackground" tools:targetApi="31">@color/octobot_navy</item>
     </style>
 </resources>

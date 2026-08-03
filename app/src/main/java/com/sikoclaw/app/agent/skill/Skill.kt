@@ -4,7 +4,7 @@
 package com.sikoclaw.app.agent.skill
 
 /**
- * Siko Claw Skill definition.
+ * OctoBot Skill definition.
  *
  * A skill is a pre-defined multi-step action sequence that saves 3-10+
  * LLM rounds. Skills execute deterministically first, falling back to

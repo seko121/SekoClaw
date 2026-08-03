@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Siko Claw</string>
+    <string name="app_name">OctoBot</string>
 
     <!-- Common -->
     <string name="common_confirm">OK</string>
@@ -19,24 +19,48 @@
     <string name="app_slogan">AI Agents that get things done</string>
 
     <!-- Guide -->
-    <string name="guide_page_title">Permission Setup</string>
-    <string name="guide_page_subtitle">Please enable the following permissions for the app to work properly</string>
+    <string name="guide_page_title">Meet OctoBot</string>
+    <string name="guide_page_subtitle">Set up only the capabilities you want. Every permission can be skipped and changed later.</string>
     <string name="guide_skip">Skip</string>
-    <string name="guide_start">Get Started</string>
+    <string name="guide_start">Continue</string>
+    <string name="common_back" translatable="false">Back</string>
+    <string name="octobot_onboarding_art" translatable="false">OctoBot setup illustration</string>
+    <string name="onboarding_welcome_title" translatable="false">Welcome to OctoBot</string>
+    <string name="onboarding_welcome_desc" translatable="false">Your personal AI agent for conversations, tools, files and tasks — always under your control.</string>
+    <string name="onboarding_accessibility_title" translatable="false">Phone control</string>
+    <string name="onboarding_accessibility_desc" translatable="false">Accessibility lets OctoBot inspect the visible screen and perform taps when you explicitly ask it to control your phone.</string>
+    <string name="onboarding_file_title" translatable="false">File access</string>
+    <string name="onboarding_file_desc" translatable="false">Allow OctoBot to import, create and save files. You can skip this and use the Android file picker instead.</string>
+    <string name="onboarding_notifications_title" translatable="false">Stay informed</string>
+    <string name="onboarding_notifications_desc" translatable="false">Enable notifications to see task progress while OctoBot works in the background.</string>
+    <string name="onboarding_battery_title" translatable="false">Keep tasks running</string>
+    <string name="onboarding_battery_desc" translatable="false">Removing battery restrictions helps long tasks finish reliably. This is optional and can be changed later.</string>
+    <string name="onboarding_provider_title" translatable="false">Connect a model</string>
+    <string name="onboarding_provider_desc" translatable="false">Add an API provider or choose a local model. OctoBot can be deployed now and configured later.</string>
+    <string name="onboarding_review_title" translatable="false">Review setup</string>
+    <string name="onboarding_review_desc" translatable="false">Check the capabilities you enabled. Skipped items remain available from Settings at any time.</string>
+    <string name="onboarding_deploy_title" translatable="false">OctoBot is ready</string>
+    <string name="onboarding_deploy_desc" translatable="false">Deploy your agent and begin your first conversation.</string>
+    <string name="onboarding_enable" translatable="false">Open settings</string>
+    <string name="onboarding_configure" translatable="false">Choose model</string>
+    <string name="onboarding_deploy" translatable="false">Deploy OctoBot</string>
+    <string name="onboarding_enabled" translatable="false">Enabled</string>
+    <string name="onboarding_connected" translatable="false">✓ Connected</string>
+    <string name="onboarding_not_enabled" translatable="false">Not enabled — you can continue</string>
     <string name="guide_title_accessibility">Accessibility Service</string>
-    <string name="guide_desc_accessibility">Lets Siko Claw read the screen and tap buttons for you. Tap to enable.</string>
+    <string name="guide_desc_accessibility">Lets OctoBot read the screen and tap buttons for you. Tap to enable.</string>
     <string name="guide_title_notification">Task Notifications</string>
-    <string name="guide_desc_notification">Lets Siko Claw show progress while a task or monitor is active. Tap to enable.</string>
+    <string name="guide_desc_notification">Lets OctoBot show progress while a task or monitor is active. Tap to enable.</string>
     <string name="guide_title_overlay">System Overlay</string>
     <string name="guide_desc_overlay">Shows a floating status panel while tasks run. Tap to enable.</string>
     <string name="guide_title_battery">Battery Whitelist</string>
-    <string name="guide_desc_battery">Prevents the system from killing Siko Claw. Tap to allow.</string>
+    <string name="guide_desc_battery">Prevents the system from killing OctoBot. Tap to allow.</string>
     <string name="guide_title_storage">File Access</string>
-    <string name="guide_desc_storage">Lets Siko Claw read and write files on your device. Tap to enable.</string>
+    <string name="guide_desc_storage">Lets OctoBot read and write files on your device. Tap to enable.</string>
 
     <!-- Home -->
     <string name="home_need_notification_permission">Notification permission is required</string>
-    <string name="home_enable_accessibility">Please enable Siko Claw Accessibility Service</string>
+    <string name="home_enable_accessibility">Please enable OctoBot Accessibility Service</string>
     <string name="home_accessibility_enabled">Accessibility service enabled</string>
     <string name="home_notification_enabled">Task notifications enabled</string>
     <string name="home_overlay_enabled">Overlay permission enabled</string>
@@ -124,9 +148,9 @@
     <string name="floating_task_received">Received: \"%s\"</string>
 
     <!-- Foreground Service Notification -->
-    <string name="notification_channel_name">Siko Claw Status</string>
-    <string name="notification_channel_description">Shows Siko Claw running status and stats</string>
-    <string name="notification_content_title">Siko Claw · Task in progress</string>
+    <string name="notification_channel_name">OctoBot Status</string>
+    <string name="notification_channel_description">Shows OctoBot running status and stats</string>
+    <string name="notification_content_title">OctoBot · Task in progress</string>
     <string name="notification_content_text">Running task...</string>
 
     <!-- Channel Messages -->
@@ -150,7 +174,7 @@
     <string name="cd_task_error">Task failed</string>
     <string name="cd_channel_logo">Channel logo</string>
     <string name="cd_app_logo">App logo</string>
-    <string name="cd_floating_idle">Siko Claw — tap to focus</string>
+    <string name="cd_floating_idle">OctoBot — tap to focus</string>
     <string name="cd_qr_code">QR code</string>
     <string name="cd_toggle_password">Show or hide password</string>
     <string name="cd_copy">Copy</string>

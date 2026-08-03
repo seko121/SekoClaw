@@ -75,6 +75,10 @@ class SettingsActivity : BaseActivity() {
         viewModel.refresh()
     }
 
+    private val legacyStoragePermission = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { refreshPermissions() }
+
     // Register channel config result callback
     private val channelConfigLauncher = ChannelConfigActivity.registerLauncher(this) { result ->
         result?.let {
@@ -205,7 +209,7 @@ class SettingsActivity : BaseActivity() {
         ConfirmDialog.showWarm(
             context = this,
             title = "Enable External Automation?",
-            message = "This lets trusted apps like Tasker, MacroDroid, or ADB start Siko Claw tasks with explicit Android intents. Keep it off unless you control the automation that will call it.",
+            message = "This lets trusted apps like Tasker, MacroDroid, or ADB start OctoBot tasks with explicit Android intents. Keep it off unless you control the automation that will call it.",
             actionTitle = "Enable",
             cancelTitle = getString(R.string.common_cancel),
             onAction = {
@@ -291,12 +295,21 @@ class SettingsActivity : BaseActivity() {
             onClick = {
                 if (AppCapabilityCoordinator.snapshot(this@SettingsActivity).storageAccessGranted) {
                     Toast.makeText(this@SettingsActivity, R.string.home_storage_enabled, Toast.LENGTH_SHORT).show()
+                } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+                    legacyStoragePermission.launch(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE))
                 } else {
                     AppCapabilityCoordinator.openSystemSettings(this@SettingsActivity, AppRequirement.STORAGE)
                 }
             },
-            showDivider = false
+            showDivider = true
         )
+
+        permissionsGroup.addMenuItem(
+            leadingIcon = android.R.drawable.ic_menu_help,
+            title = "Setup guide",
+            onClick = { startActivity(Intent(this, com.sikoclaw.app.ui.guide.GuideActivity::class.java)) },
+            showDivider = false,
+        ).apply { setTrailingText("Open") }
 
         // Channel (hidden)
         val channelGroup = findViewById<MenuGroup>(R.id.channelGroup)
@@ -446,6 +459,26 @@ class SettingsActivity : BaseActivity() {
         toolsGroup.setTitle("Tools")
 
         toolsGroup.addMenuItem(
+            leadingIcon = android.R.drawable.ic_menu_myplaces,
+            title = "Agent",
+            onClick = { startActivity(Intent(this, AgentFeaturesActivity::class.java).putExtra("mode", "agent")) },
+            showDivider = true
+        ).apply {
+            val memoryCount = com.sikoclaw.app.agent.memory.KaiMemoryStore.all().size
+            setTrailingText("$memoryCount memories")
+        }
+
+        toolsGroup.addMenuItem(
+            leadingIcon = android.R.drawable.ic_menu_preferences,
+            title = "Services",
+            onClick = { startActivity(Intent(this, ProviderManagementActivity::class.java)) },
+            showDivider = true
+        ).apply {
+            val providerState = com.sikoclaw.app.agent.llm.MultiProviderStore.state()
+            setTrailingText("${providerState.providers.size} providers · ${providerState.models.size} models")
+        }
+
+        toolsGroup.addMenuItem(
             leadingIcon = android.R.drawable.ic_menu_manage,
             title = "Manage Tools",
             onClick = {
@@ -457,12 +490,30 @@ class SettingsActivity : BaseActivity() {
             setTrailingText("$enabled enabled")
         }
 
-        toolsGroup.addMenuItem(android.R.drawable.ic_menu_myplaces, "User Prompt", { startActivity(Intent(this, AgentFeaturesActivity::class.java).putExtra("mode", "user_prompt")) }, showDivider = true).apply { setTrailingText(if (KVUtils.getUserPrompt().isBlank()) "Empty" else "Saved") }
-        toolsGroup.addMenuItem(android.R.drawable.ic_menu_edit, "Soul Prompt", { startActivity(Intent(this, AgentFeaturesActivity::class.java).putExtra("mode", "soul_prompt")) }, showDivider = true).apply { setTrailingText(if (KVUtils.getSoulPrompt().isBlank()) "Default" else "Custom") }
-        toolsGroup.addMenuItem(android.R.drawable.ic_menu_info_details, "Memory", { startActivity(Intent(this, AgentFeaturesActivity::class.java).putExtra("mode", "memory")) }, showDivider = true).apply { setTrailingText(if (KVUtils.getUserMemoryPrompt().isBlank()) "Empty" else "View") }
+        toolsGroup.addMenuItem(android.R.drawable.ic_input_add, "Plugins", {
+            startActivity(Intent(this, AgentFeaturesActivity::class.java).putExtra("mode", "plugins"))
+        }, showDivider = true).apply {
+            setTrailingText("${com.sikoclaw.app.plugin.PluginCatalog.all().count { com.sikoclaw.app.plugin.PluginCatalog.isEnabled(it.id) }} active")
+        }
+
         toolsGroup.addMenuItem(android.R.drawable.ic_menu_agenda, "Skills", { startActivity(Intent(this, AgentFeaturesActivity::class.java).putExtra("mode", "skills")) }, showDivider = true).apply { setTrailingText("${com.sikoclaw.app.agent.skill.UserSkillStore.all().count { it.enabled }} active") }
         toolsGroup.addMenuItem(android.R.drawable.ic_menu_share, "MCP Servers", { startActivity(Intent(this, AgentFeaturesActivity::class.java).putExtra("mode", "mcp")) }, showDivider = false).apply { setTrailingText("${com.sikoclaw.app.mcp.McpManager.all().count { it.enabled }} configured") }
-        toolsGroup.addMenuItem(android.R.drawable.ic_menu_recent_history, "Cron Jobs", { startActivity(Intent(this, AgentFeaturesActivity::class.java).putExtra("mode", "cron")) }, showDivider = false).apply { setTrailingText("${com.sikoclaw.app.cron.CronManager.all().count { it.enabled }} active") }
+        toolsGroup.addMenuItem(android.R.drawable.ic_dialog_email, "Floating Assistant", { startActivity(Intent(this, AgentFeaturesActivity::class.java).putExtra("mode", "floating")) }, showDivider = true).apply { setTrailingText(if (com.sikoclaw.app.floating.FloatingAssistantConfig.enabled()) "Enabled" else "Disabled") }
+
+        toolsGroup.addMenuItem(
+            android.R.drawable.ic_menu_upload,
+            "Linux Sandbox",
+            { startActivity(Intent(this, LinuxSandboxActivity::class.java).putExtra(EXTRA_TERMINAL_SETTINGS, true)) },
+            showDivider = false,
+        ).apply {
+            val sandbox = com.sikoclaw.app.linux.LinuxSandboxFeature.controller.status.value
+            setTrailingText(when {
+                sandbox.ready -> "Alpine ready · ${sandbox.diskUsageMB} MB"
+                sandbox.working -> sandbox.statusText
+                sandbox.error -> "Setup failed"
+                else -> "Not installed"
+            })
+        }
 
         // Remote Control
         val remoteGroup = findViewById<MenuGroup>(R.id.remoteGroup)
@@ -513,7 +564,7 @@ class SettingsActivity : BaseActivity() {
 
         aboutGroup.addMenuItem(
             leadingIcon = android.R.drawable.ic_menu_info_details,
-            title = "Siko Claw",
+            title = "OctoBot",
             onClick = { },
             showDivider = true
         ).apply {
@@ -542,22 +593,22 @@ class SettingsActivity : BaseActivity() {
             leadingIcon = android.R.drawable.ic_menu_share,
             title = "GitHub",
             onClick = {
-                startActivity(Intent(Intent.ACTION_VIEW, "https://github.com/agents-io/PokeClaw".toUri()))
+                startActivity(Intent(Intent.ACTION_VIEW, "https://github.com/seko121/SekoClaw".toUri()))
             },
             showDivider = true
         ).apply {
-            setTrailingText("agents-io/PokeClaw")
+            setTrailingText("seko121/SekoClaw")
         }
 
         aboutGroup.addMenuItem(
             leadingIcon = android.R.drawable.ic_menu_compass,
             title = "Built by",
             onClick = {
-                startActivity(Intent(Intent.ACTION_VIEW, "https://github.com/ithiria894".toUri()))
+                startActivity(Intent(Intent.ACTION_VIEW, "https://github.com/seko121".toUri()))
             },
             showDivider = false
         ).apply {
-            setTrailingText("ithiria894")
+            setTrailingText("seko121")
         }
     }
 
@@ -581,10 +632,10 @@ class SettingsActivity : BaseActivity() {
                     shareReportFile(
                         report = report,
                         chooserTitle = "Share bug report ZIP",
-                        subject = "Siko Claw bug report ${com.sikoclaw.app.BuildConfig.VERSION_NAME}",
+                        subject = "OctoBot bug report ${com.sikoclaw.app.BuildConfig.VERSION_NAME}",
                         body = """
                             Attach this ZIP to your GitHub issue:
-                            https://github.com/agents-io/PokeClaw/issues/new
+                            https://github.com/seko121/SekoClaw/issues/new
                         """.trimIndent()
                     )
                 }
@@ -599,8 +650,8 @@ class SettingsActivity : BaseActivity() {
             shareReportFile(
                 report = report,
                 chooserTitle = "Share debug report",
-                subject = "Siko Claw debug report ${com.sikoclaw.app.BuildConfig.VERSION_NAME}",
-                body = "Attach this debug report when reporting a Siko Claw issue."
+                subject = "OctoBot debug report ${com.sikoclaw.app.BuildConfig.VERSION_NAME}",
+                body = "Attach this debug report when reporting a OctoBot issue."
             )
         }
     }
@@ -625,7 +676,7 @@ class SettingsActivity : BaseActivity() {
     }
 
     private fun openGitHubIssue(report: java.io.File) {
-        val issueUri = "https://github.com/agents-io/PokeClaw/issues/new".toUri()
+        val issueUri = "https://github.com/seko121/SekoClaw/issues/new".toUri()
             .buildUpon()
             .appendQueryParameter(
                 "title",
@@ -664,10 +715,10 @@ class SettingsActivity : BaseActivity() {
             - Android: ${Build.VERSION.RELEASE} (SDK ${Build.VERSION.SDK_INT})
 
             ## Attachments
-            - Attach this ZIP from Siko Claw: `${report.name}`
+            - Attach this ZIP from OctoBot: `${report.name}`
             - If this looks device-specific and you have ADB available, also attach `adb logcat`
 
-            Generated by Siko Claw ${com.sikoclaw.app.BuildConfig.VERSION_NAME}.
+            Generated by OctoBot ${com.sikoclaw.app.BuildConfig.VERSION_NAME}.
         """.trimIndent()
     }
 
@@ -765,7 +816,7 @@ class SettingsActivity : BaseActivity() {
                                 }
                             }
                             SettingsViewModel.MenuAction.LLM_CONFIG -> {
-                                llmConfigLauncher.launch(Intent(this@SettingsActivity, LlmConfigActivity::class.java))
+                                llmConfigLauncher.launch(Intent(this@SettingsActivity, ProviderManagementActivity::class.java))
                             }
                             null -> {}
                             else -> {}

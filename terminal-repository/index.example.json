@@ -1,0 +1,16 @@
+{
+  "formatVersion": 1,
+  "architecture": "arm64-v8a",
+  "packages": [
+    {
+      "name": "curl",
+      "version": "0.0.0-replace-at-build",
+      "architecture": "arm64-v8a",
+      "url": "https://packages.example.invalid/siko/arm64-v8a/packages/curl-0.0.0.tar.zst",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "dependencies": ["ca-certificates", "openssl"],
+      "installedSize": 0,
+      "description": "Command line HTTP client"
+    }
+  ]
+}

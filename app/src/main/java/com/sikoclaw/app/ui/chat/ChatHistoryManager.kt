@@ -12,7 +12,7 @@ import java.util.Locale
 /**
  * Saves and loads chat conversations as markdown files.
  *
- * Storage: /storage/emulated/0/Siko Claw/chats/
+ * Storage: /storage/emulated/0/OctoBot/chats/
  * Format: 2026-04-04-send-hi-to-mom.md
  *
  * Each file:
@@ -89,6 +89,12 @@ object ChatHistoryManager {
                     } else {
                         sb.appendLine("## 🦞 Assistant")
                     }
+                    sb.appendLine(serializeTimestamp(msg.timestamp))
+                    sb.appendLine(msg.content)
+                    sb.appendLine()
+                }
+                ChatMessage.Role.REASONING -> {
+                    sb.appendLine("## Thoughts")
                     sb.appendLine(serializeTimestamp(msg.timestamp))
                     sb.appendLine(msg.content)
                     sb.appendLine()
@@ -174,6 +180,12 @@ object ChatHistoryManager {
                 line.startsWith("## System") -> {
                     flushMessage(messages, currentRole, contentBuilder, currentModelName, currentTimestamp, fallbackConversationTimestamp)
                     currentRole = ChatMessage.Role.SYSTEM
+                    currentModelName = null
+                    currentTimestamp = null
+                }
+                line.startsWith("## Thoughts") -> {
+                    flushMessage(messages, currentRole, contentBuilder, currentModelName, currentTimestamp, fallbackConversationTimestamp)
+                    currentRole = ChatMessage.Role.REASONING
                     currentModelName = null
                     currentTimestamp = null
                 }

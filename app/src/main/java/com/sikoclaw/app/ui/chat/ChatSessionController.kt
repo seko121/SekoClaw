@@ -72,7 +72,9 @@ class ChatSessionController(
         if (!resolvedConfig.isLocalActive()) {
             localUiGeneration++
             val cloudConfig = resolvedConfig.activeCloud
-            if (cloudConfig.apiKey.isNotEmpty() && cloudConfig.modelName.isNotEmpty()) {
+            if (cloudConfig.modelName.isNotEmpty() &&
+                (!cloudConfig.requiresApiKey || cloudConfig.apiKey.isNotEmpty())
+            ) {
                 val previousModel = cloudModelName
                 cloudClient = LlmSessionManager.createCloudClient(temperature = 0.7)
                 if (cloudClient == null) {
@@ -306,6 +308,7 @@ class ChatSessionController(
     }
 
     fun sendChat(text: String) {
+        com.sikoclaw.app.agent.memory.ExplicitMemoryCapture.capture(text)
         addUser(text)
         uiState.isAwaitingReply.value = true
         uiState.messages.add(ChatMessage(ChatMessage.Role.ASSISTANT, "..."))
@@ -320,7 +323,7 @@ class ChatSessionController(
                         override fun onPartialText(token: String) {
                             streamed.append(token)
                             val snapshot = streamed.toString()
-                            postToMain { replaceTypingIndicator(snapshot, cloudModelName) }
+                            postToMain { replaceTypingIndicator(snapshot, cloudModelName, streaming = true) }
                         }
                         override fun onComplete(response: com.sikoclaw.app.agent.llm.LlmResponse) = Unit
                         override fun onError(error: Throwable) = Unit
@@ -422,7 +425,7 @@ class ChatSessionController(
     fun startNewConversationRuntime() {
         if (cloudClient != null) {
             cloudHistory.clear()
-            cloudHistory.add(SystemMessage.from(BASE_SYSTEM_PROMPT))
+            cloudHistory.add(SystemMessage.from(com.sikoclaw.app.agent.PromptUtils.applyGlobalPrompt(BASE_SYSTEM_PROMPT)))
             postToMain {
                 addSystem("New conversation started.")
                 onRefreshSidebarHistory()
@@ -583,6 +586,10 @@ class ChatSessionController(
     ): String? {
         val meaningfulMessages = visibleMessages.filter {
             it.role == ChatMessage.Role.USER || it.role == ChatMessage.Role.ASSISTANT
+        }.map { message ->
+            if (message.role == ChatMessage.Role.USER && message.attachments.isNotEmpty()) {
+                message.copy(content = ChatAttachmentManager.encodePrompt(message.content, message.attachments))
+            } else message
         }
         if (conversationId.isNullOrBlank() || meaningfulMessages.isEmpty()) return null
         return ConversationCompactor.buildRestoredSystemPrompt(
@@ -594,10 +601,12 @@ class ChatSessionController(
 
     private fun rebuildCloudHistoryFromVisibleMessages() {
         cloudHistory.clear()
-        cloudHistory.add(SystemMessage.from(BASE_SYSTEM_PROMPT))
+        cloudHistory.add(SystemMessage.from(com.sikoclaw.app.agent.PromptUtils.applyGlobalPrompt(BASE_SYSTEM_PROMPT)))
         uiState.messages.forEach { msg ->
             when (msg.role) {
-                ChatMessage.Role.USER -> cloudHistory.add(UserMessage.from(msg.content))
+                ChatMessage.Role.USER -> cloudHistory.add(UserMessage.from(
+                    if (msg.attachments.isEmpty()) msg.content else ChatAttachmentManager.encodePrompt(msg.content, msg.attachments)
+                ))
                 ChatMessage.Role.ASSISTANT -> cloudHistory.add(AiMessage.from(msg.content))
                 else -> Unit
             }
@@ -610,20 +619,29 @@ class ChatSessionController(
         }
     }
 
-    private fun replaceTypingIndicator(text: String, actualModelName: String? = null) {
+    private fun replaceTypingIndicator(text: String, actualModelName: String? = null, streaming: Boolean = false) {
         val modelTag = actualModelName
             ?: uiState.modelStatus.value.removePrefix("● ").split(" ·").firstOrNull()?.trim()
             ?: ""
-        val idx = uiState.messages.indexOfLast { it.role == ChatMessage.Role.ASSISTANT && it.content == "..." }
+        val parsed = AssistantStreamParser.parse(text)
+        if (com.sikoclaw.app.utils.KVUtils.getBoolean("SHOW_AGENT_THOUGHTS", false) && parsed.reasoning.isNotBlank()) {
+            val thoughtIndex = uiState.messages.indexOfLast { it.role == ChatMessage.Role.REASONING && it.isStreaming }
+            val thought = ChatMessage(ChatMessage.Role.REASONING, parsed.reasoning, isStreaming = streaming)
+            if (thoughtIndex >= 0) uiState.messages[thoughtIndex] = thought else uiState.messages.add(thought)
+        }
+        val visible = parsed.visible.ifBlank { if (streaming) return else "I couldn't produce a final response. Please try again." }
+        val idx = uiState.messages.indexOfLast { it.role == ChatMessage.Role.ASSISTANT && (it.content == "..." || it.isStreaming) }
         if (idx >= 0) {
-            uiState.messages[idx] = ChatMessage(ChatMessage.Role.ASSISTANT, text, modelName = modelTag)
+            uiState.messages[idx] = ChatMessage(ChatMessage.Role.ASSISTANT, visible, modelName = modelTag, isStreaming = streaming)
         } else {
-            uiState.messages.add(ChatMessage(ChatMessage.Role.ASSISTANT, text, modelName = modelTag))
+            uiState.messages.add(ChatMessage(ChatMessage.Role.ASSISTANT, visible, modelName = modelTag, isStreaming = streaming))
         }
     }
 
     private fun addUser(text: String) {
-        uiState.messages.add(ChatMessage(ChatMessage.Role.USER, text))
+        val payload = PluginMessageCodec.decode(text)
+        val attachmentPayload = ChatAttachmentManager.decode(payload.visibleText)
+        uiState.messages.add(ChatMessage(ChatMessage.Role.USER, attachmentPayload.visibleText, pluginIds = payload.pluginIds, attachments = attachmentPayload.attachments))
     }
 
     private fun addSystem(text: String) {

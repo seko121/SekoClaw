@@ -12,6 +12,7 @@ object LlmClientFactory {
 
     fun create(config: AgentConfig): LlmClient {
         val httpClientBuilder = OkHttpClientBuilderAdapter().apply {
+            setCustomHeaders(config.headers)
             if (DefaultAgentService.FILE_LOGGING_ENABLED && DefaultAgentService.FILE_LOGGING_CACHE_DIR != null) {
                 setFileLoggingEnabled(true, DefaultAgentService.FILE_LOGGING_CACHE_DIR)
             }
@@ -19,6 +20,7 @@ object LlmClientFactory {
         return when (config.provider) {
             LlmProvider.OPENAI -> OpenAiLlmClient(config, httpClientBuilder)
             LlmProvider.ANTHROPIC -> AnthropicLlmClient(config, httpClientBuilder)
+            LlmProvider.GEMINI -> GeminiLlmClient(config)
             LlmProvider.LOCAL -> LocalLlmClient(config)
         }
     }

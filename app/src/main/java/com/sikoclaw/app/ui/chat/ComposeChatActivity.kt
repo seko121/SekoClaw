@@ -21,6 +21,7 @@ import com.sikoclaw.app.automation.ExternalAutomationContract
 import com.sikoclaw.app.automation.ExternalAutomationEntrypoint
 import com.sikoclaw.app.appViewModel
 import com.sikoclaw.app.floating.FloatingCircleManager
+import com.sikoclaw.app.floating.SharedChatBus
 import com.sikoclaw.app.ui.settings.LlmConfigActivity
 import com.sikoclaw.app.ui.settings.SettingsActivity
 import com.sikoclaw.app.utils.KVUtils
@@ -29,7 +30,7 @@ import java.util.concurrent.Executors
 import android.provider.OpenableColumns
 
 /**
- * Siko Claw Chat Activity — Compose shell for the chat screen.
+ * OctoBot Chat Activity â€” Compose shell for the chat screen.
  *
  * Chat runtime ownership lives in [ChatSessionController].
  * This activity keeps lifecycle wiring, task flows, and sidebar/history UI state.
@@ -38,6 +39,7 @@ class ComposeChatActivity : ComponentActivity() {
 
     companion object {
         private const val TAG = "ComposeChatActivity"
+        const val EXTRA_FIRST_WAKE = "octobot_first_wake"
         private const val EXTRA_TASK = "task"
         private const val EXTRA_CHAT = "chat"
     }
@@ -45,7 +47,7 @@ class ComposeChatActivity : ComponentActivity() {
     private val executor = Executors.newSingleThreadExecutor()
     private val conversationStore by lazy { ConversationStore(this) }
 
-    // Compose state — observed by ChatScreen
+    // Compose state â€” observed by ChatScreen
     private val _messages = mutableStateListOf<ChatMessage>()
     private val _modelStatus = mutableStateOf("No model loaded")
     private val _isLocalModelActive = mutableStateOf(ModelConfigRepository.isLocalActive())
@@ -56,14 +58,27 @@ class ComposeChatActivity : ComponentActivity() {
     private val _conversations = mutableStateListOf<ChatHistoryManager.ConversationSummary>()
     private val _isDownloading = mutableStateOf(false)
     private val _downloadProgress = mutableStateOf(0)
-    private val pendingAttachments = mutableListOf<android.net.Uri>()
+    private val pendingAttachments = mutableListOf<ChatAttachment>()
+    private val _attachmentsProcessing = mutableStateOf(false)
+    private val _scrollToMessageTimestamp = mutableStateOf<Long?>(null)
 
     private val attachmentPicker = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris: List<android.net.Uri> ->
         if (uris.isEmpty()) return@registerForActivityResult
-        pendingAttachments.clear()
-        pendingAttachments.addAll(uris)
         val names = uris.map { attachmentName(it) }
-        _messages.add(ChatMessage(ChatMessage.Role.SYSTEM, "Attached: ${names.joinToString(", ")}\nThey will be included with your next message."))
+        _attachmentsProcessing.value = true
+        val statusIndex = _messages.size
+        _messages.add(ChatMessage(ChatMessage.Role.SYSTEM, "Processing attachments: ${names.joinToString(", ")}â€¦"))
+        executor.submit {
+            val processed = uris.map { uri -> runCatching { ChatAttachmentManager.import(this, uri) }
+                .getOrElse { ChatAttachment(uri = uri.toString(), name = attachmentName(uri), mimeType = contentResolver.getType(uri).orEmpty(), sizeBytes = 0, state = AttachmentState.FAILED, error = it.message) } }
+            runOnUiThread {
+                pendingAttachments.clear(); pendingAttachments.addAll(processed)
+                _attachmentsProcessing.value = false
+                val ready = processed.count { it.state == AttachmentState.READY }
+                val failed = processed.size - ready
+                _messages[statusIndex] = ChatMessage(ChatMessage.Role.SYSTEM, "Attachments ready: $ready${if (failed > 0) " Â· $failed failed" else ""}. They will be included with your next message.")
+            }
+        }
     }
 
     // Session-level token tracking for chat mode
@@ -108,7 +123,10 @@ class ComposeChatActivity : ComponentActivity() {
                 isTaskRunning = _isTaskRunning,
             ),
             onPersistConversation = { saveChat() },
-            onTaskSettled = { deferLocalChatBootstrapForAutoTask = false },
+            onTaskSettled = {
+                deferLocalChatBootstrapForAutoTask = false
+                runNextQueuedTask()
+            },
             onTaskTerminal = { sendExternalAutomationTerminalCallback(it) },
         )
     }
@@ -146,13 +164,60 @@ class ComposeChatActivity : ComponentActivity() {
 
         // Status bar color
         val themeColors = ThemeManager.getColors()
+        androidx.core.view.WindowCompat.getInsetsController(window, window.decorView).apply {
+            isAppearanceLightStatusBars = !ThemeManager.isDark()
+            isAppearanceLightNavigationBars = !ThemeManager.isDark()
+        }
         window.statusBarColor = themeColors.toolbarBg
 
         // Build Compose colors from ThemeManager
         val composeColors = with(ThemeManager) { themeColors.toComposeColors() }
+        SharedChatBus.sendHandler = { text -> runOnUiThread { sendChat(withAttachments(text)) } }
+        SharedChatBus.taskHandler = { text -> runOnUiThread { taskFlowController.sendTask(withAttachments(text)) } }
+        SharedChatBus.stopHandler = { runOnUiThread { appViewModel.stopTask(); _isAwaitingReply.value = false; _isTaskRunning.value = false } }
+        SharedChatBus.attachmentHandler = { attachment ->
+            val valid = ChatAttachmentManager.validate(this, attachment)
+            if (valid.isFailure) {
+                XLog.w(TAG, "Rejected chat attachment: ${valid.exceptionOrNull()?.message}")
+                false
+            } else {
+                val publish = {
+                    _messages.add(ChatMessage(ChatMessage.Role.ASSISTANT, attachment.name, attachments = listOf(attachment)))
+                    saveChat()
+                }
+                if (Looper.myLooper() == Looper.getMainLooper()) {
+                    publish()
+                    true
+                } else {
+                    // The tool must not claim success before the message exists in the list.
+                    val rendered = java.util.concurrent.CountDownLatch(1)
+                    runOnUiThread { publish(); rendered.countDown() }
+                    rendered.await(2, java.util.concurrent.TimeUnit.SECONDS)
+                }
+            }
+        }
 
         setContent {
             val activeTasks by activeTaskShellController.activeTasks.collectAsState()
+            LaunchedEffect(_messages.toList()) { SharedChatBus.publish(_messages.toList()) }
+            LaunchedEffect(_isAwaitingReply.value, _isTaskRunning.value) {
+                when {
+                    _isTaskRunning.value -> com.sikoclaw.app.agent.AgentAnimationState.set(com.sikoclaw.app.agent.OctoBotMotion.WORKING)
+                    _isAwaitingReply.value -> com.sikoclaw.app.agent.AgentAnimationState.set(com.sikoclaw.app.agent.OctoBotMotion.THINKING)
+                    else -> {
+                        com.sikoclaw.app.agent.AgentAnimationState.set(com.sikoclaw.app.agent.OctoBotMotion.READY)
+                        kotlinx.coroutines.delay(1_100)
+                        if (!_isAwaitingReply.value && !_isTaskRunning.value) {
+                            com.sikoclaw.app.agent.AgentAnimationState.set(com.sikoclaw.app.agent.OctoBotMotion.IDLE)
+                        }
+                    }
+                }
+                SharedChatBus.publishStatus(when {
+                    _isTaskRunning.value -> "Working on your task"
+                    _isAwaitingReply.value -> "Thinking"
+                    else -> "Ready"
+                })
+            }
 
             ChatScreen(
                 messages = _messages.toList(),
@@ -160,7 +225,7 @@ class ComposeChatActivity : ComponentActivity() {
                 needsPermission = _needsPermission.value,
                 isAwaitingReply = _isAwaitingReply.value,
                 isTaskRunning = _isTaskRunning.value,
-                inputEnabled = _inputEnabled.value,
+                inputEnabled = _inputEnabled.value && !_attachmentsProcessing.value,
                 isDownloading = _isDownloading.value,
                 downloadProgress = _downloadProgress.value,
                 isLocalModel = _isLocalModelActive.value,
@@ -168,18 +233,38 @@ class ComposeChatActivity : ComponentActivity() {
                 sessionCost = _sessionCost.value,
                 onSendChat = { sendChat(withAttachments(it)) },
                 onSendTask = { taskFlowController.sendTask(withAttachments(it)) },
+                onSteerTask = { instruction ->
+                    com.sikoclaw.app.agent.AgentSteeringBus.steer(instruction)
+                    val visible = PluginMessageCodec.decode(instruction)
+                    _messages.add(ChatMessage(ChatMessage.Role.USER, visible.visibleText, pluginIds = visible.pluginIds))
+                    _messages.add(ChatMessage(ChatMessage.Role.SYSTEM, "Steering instruction will be applied at the next safe checkpoint."))
+                    saveChat()
+                },
+                onQueueTask = { prompt ->
+                    val queued = com.sikoclaw.app.agent.AgentTaskQueue.enqueue(prompt)
+                    _messages.add(ChatMessage(ChatMessage.Role.SYSTEM, "Added to pending tasks Â· ${queued.id.take(6)}"))
+                    saveChat()
+                },
                 onStartMonitor = { target -> taskFlowController.startMonitor(target) },
                 onSendDirectMessage = { contact, app, message ->
                     taskFlowController.sendTask("send \"$message\" to $contact on $app")
                 },
                 onNewChat = { newChat() },
                 onOpenSettings = { startActivity(Intent(this, SettingsActivity::class.java)) },
-                onOpenModels = { startActivity(Intent(this, LlmConfigActivity::class.java)) },
-                onOpenTerminal = { startActivity(Intent(this, com.sikoclaw.app.ui.settings.AgentFeaturesActivity::class.java).putExtra("mode", "terminal")) },
+                onOpenModels = { startActivity(Intent(this, com.sikoclaw.app.ui.settings.ProviderManagementActivity::class.java)) },
+                onOpenBrowser = { com.sikoclaw.app.ui.web.WebActivity.start(this, com.sikoclaw.app.utils.KVUtils.getLastBrowserUrl(), "Browser") },
+                onStartVoiceCall = { startActivity(Intent(this, com.sikoclaw.app.voice.VoiceCallActivity::class.java)) },
                 onFixPermissions = { startActivity(Intent(this, SettingsActivity::class.java)) },
                 onAttach = { attachmentPicker.launch(arrayOf("image/*", "application/pdf", "text/*", "application/*")) },
                 conversations = _conversations.toList(),
-                onSelectConversation = { loadConversation(it) },
+onSelectConversation = { loadConversation(it) },
+                onSearchResult = { result ->
+                    _conversations.firstOrNull { it.id == result.conversationId || it.file.absolutePath == result.filePath }?.let {
+                        loadConversation(it)
+                        _scrollToMessageTimestamp.value = result.messageTimestamp
+                    }
+                },
+                scrollToMessageTimestamp = _scrollToMessageTimestamp.value,
                 onDeleteConversation = { conv ->
                     val deleted = conversationStore.deleteConversation(conv)
                     XLog.i(TAG, "Delete conversation: ${conv.file.absolutePath} deleted=$deleted")
@@ -187,7 +272,7 @@ class ComposeChatActivity : ComponentActivity() {
                 },
                 onRenameConversation = { conv, newName ->
                     val renamed = conversationStore.renameConversation(conv, newName)
-                    XLog.i(TAG, "Rename conversation: '${conv.title}' → '$newName' renamed=$renamed")
+                    XLog.i(TAG, "Rename conversation: '${conv.title}' â†’ '$newName' renamed=$renamed")
                     refreshSidebarHistory()
                 },
                 activeTasks = activeTasks,
@@ -247,6 +332,10 @@ class ComposeChatActivity : ComponentActivity() {
         // Debug: auto-trigger task from ADB intent
         // Usage: adb shell am start -n com.sikoclaw.app/.ui.chat.ComposeChatActivity --es task "open my camera"
         handleIntentAutomation(intent, initialDelayMs = 2000)
+        if (intent.getBooleanExtra(EXTRA_FIRST_WAKE, false)) {
+            intent.removeExtra(EXTRA_FIRST_WAKE)
+            Handler(Looper.getMainLooper()).postDelayed({ sendChat("Wake up, my friend.") }, 1800)
+        }
 
     }
 
@@ -284,15 +373,24 @@ class ComposeChatActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
-        super.onDestroy()
+        SharedChatBus.sendHandler = null
+        SharedChatBus.taskHandler = null
+        SharedChatBus.stopHandler = null
+        SharedChatBus.attachmentHandler = null
         chatSessionController.onDestroy()
         executor.shutdown()
+        super.onDestroy()
     }
 
     // ==================== CHAT ====================
 
     private fun sendChat(text: String) {
         chatSessionController.sendChat(text)
+    }
+
+    private fun runNextQueuedTask() {
+        val next = com.sikoclaw.app.agent.AgentTaskQueue.poll() ?: return
+        Handler(Looper.getMainLooper()).postDelayed({ taskFlowController.sendTask(next.prompt) }, 650)
     }
 
     private fun attachmentName(uri: android.net.Uri): String {
@@ -306,15 +404,7 @@ class ComposeChatActivity : ComponentActivity() {
         if (pendingAttachments.isEmpty()) return text
         val files = pendingAttachments.toList()
         pendingAttachments.clear()
-        val details = files.joinToString("\n") { uri ->
-            val name = attachmentName(uri)
-            val type = contentResolver.getType(uri).orEmpty()
-            val extracted = if (type.startsWith("text/") || name.endsWith(".json", true) || name.endsWith(".md", true)) {
-                try { contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText().take(50_000) }.orEmpty() } catch (_: Exception) { "" }
-            } else ""
-            if (extracted.isBlank()) "- $name ($type)" else "- $name ($type)\n--- file content ---\n$extracted\n--- end file ---"
-        }
-        return "$text\n\nATTACHED FILES:\n$details"
+        return ChatAttachmentManager.encodePrompt(text, files)
     }
 
     private fun handleIntentAutomation(intent: Intent?, initialDelayMs: Long) {

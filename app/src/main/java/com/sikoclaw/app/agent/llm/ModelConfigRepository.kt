@@ -24,19 +24,22 @@ data class CloudModelConfig(
     val providerName: String,
     val modelName: String,
     val baseUrl: String,
-    val apiKey: String
+    val apiKey: String,
+    val requiresApiKey: Boolean = true,
+    val headers: Map<String, String> = emptyMap(),
+    val protocol: String = "OPENAI_COMPATIBLE",
 ) {
     val provider: CloudProvider get() = CloudProvider.fromName(providerName)
     val resolvedBaseUrl: String
         get() = baseUrl.ifBlank {
             if (provider == CloudProvider.CUSTOM) "" else provider.defaultBaseUrl
         }
-    val isConfigured: Boolean get() = modelName.isNotBlank() && apiKey.isNotBlank()
-    val agentProvider: LlmProvider
-        get() = when (provider) {
-            CloudProvider.ANTHROPIC -> LlmProvider.ANTHROPIC
-            else -> LlmProvider.OPENAI
-        }
+    val isConfigured: Boolean get() = modelName.isNotBlank() && (!requiresApiKey || apiKey.isNotBlank())
+    val agentProvider: LlmProvider get() = when {
+        protocol == "GEMINI" || provider == CloudProvider.GOOGLE -> LlmProvider.GEMINI
+        protocol == "ANTHROPIC" || provider == CloudProvider.ANTHROPIC -> LlmProvider.ANTHROPIC
+        else -> LlmProvider.OPENAI
+    }
 }
 
 data class ResolvedModelConfig(
@@ -66,7 +69,7 @@ data class ResolvedModelConfig(
                 maxIterations = maxIterations,
                 temperature = temperature,
                 provider = LlmProvider.LOCAL,
-                streaming = streaming
+                streaming = streaming,
             )
         } else {
             AgentConfig(
@@ -77,7 +80,8 @@ data class ResolvedModelConfig(
                 maxIterations = maxIterations,
                 temperature = temperature,
                 provider = activeCloud.agentProvider,
-                streaming = streaming
+                streaming = streaming,
+                headers = activeCloud.headers,
             )
         }
     }
@@ -90,6 +94,7 @@ data class ResolvedModelConfig(
 object ModelConfigRepository {
 
     fun snapshot(): ResolvedModelConfig {
+        MultiProviderStore.ensureBuiltInFreeModel()
         val activeProviderRaw = KVUtils.getLlmProvider().ifBlank { "OPENAI" }.uppercase()
         val activeMode = if (activeProviderRaw == "LOCAL") ActiveModelMode.LOCAL else ActiveModelMode.CLOUD
 
@@ -107,6 +112,22 @@ object ModelConfigRepository {
             displayName = localDisplayName,
             backendPreference = KVUtils.getLocalBackendPreference()
         )
+
+        if (activeMode == ActiveModelMode.CLOUD) {
+            MultiProviderStore.selectedRouting().firstOrNull()?.let { (model, provider) ->
+                val providerName = if (provider.type.contains("anthropic", ignoreCase = true)) "ANTHROPIC" else "CUSTOM"
+                val cloud = CloudModelConfig(
+                    providerName = providerName,
+                    modelName = model.apiModelName,
+                    baseUrl = provider.baseUrl,
+                    apiKey = MultiProviderStore.apiKey(provider.id),
+                    requiresApiKey = provider.requiresApiKey,
+                    headers = provider.headers,
+                    protocol = provider.protocol,
+                )
+                return ResolvedModelConfig(ActiveModelMode.CLOUD, local, cloud, cloud)
+            }
+        }
 
         val defaultProvider = normalizeCloudProvider(
             KVUtils.getDefaultCloudProvider().ifBlank {
