@@ -1,113 +1,131 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/colorBgPrimary">
+    android:background="#051431"
+    android:fitsSystemWindows="true">
 
-    <!-- 跳过按钮 -->
     <TextView
         android:id="@+id/tvSkip"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:layout_marginEnd="24dp"
-        android:paddingHorizontal="12dp"
-        android:paddingVertical="8dp"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:gravity="center"
         android:text="@string/guide_skip"
-        android:textColor="@color/colorTextTertiary"
-        android:textSize="14dp"
+        android:textColor="#9FB6D7"
+        android:textSize="14sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- 可滚动内容 -->
+    <TextView
+        android:id="@+id/tvProgress"
+        android:layout_width="wrap_content"
+        android:layout_height="48dp"
+        android:gravity="center"
+        android:paddingStart="20dp"
+        android:textColor="#63E7F4"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
     <ScrollView
-        android:id="@+id/scrollView"
-        android:layout_width="match_parent"
+        android:id="@+id/guideScroll"
+        android:layout_width="0dp"
         android:layout_height="0dp"
         android:fillViewport="true"
-        android:scrollbars="none"
-        app:layout_constraintTop_toBottomOf="@id/tvSkip"
-        app:layout_constraintBottom_toTopOf="@id/btnStart">
+        android:overScrollMode="never"
+        app:layout_constraintBottom_toTopOf="@id/actionBar"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tvSkip">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
             android:orientation="vertical"
-            android:paddingHorizontal="32dp"
-            android:paddingTop="24dp"
-            android:paddingBottom="16dp">
+            android:paddingStart="24dp"
+            android:paddingTop="12dp"
+            android:paddingEnd="24dp"
+            android:paddingBottom="20dp">
 
-            <!-- 页面标题 -->
+            <ImageView
+                android:id="@+id/ivGuideArt"
+                android:layout_width="260dp"
+                android:layout_height="300dp"
+                android:adjustViewBounds="true"
+                android:contentDescription="@string/octobot_onboarding_art"
+                android:scaleType="fitCenter" />
+
             <TextView
-                android:layout_width="wrap_content"
+                android:id="@+id/tvGuideTitle"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/guide_page_title"
-                android:textColor="@color/colorTextPrimary"
-                android:textSize="24dp"
+                android:gravity="center"
+                android:textColor="#F4FAFF"
+                android:textSize="28sp"
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/tvGuideDescription"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:gravity="center"
+                android:lineSpacingExtra="4dp"
+                android:textColor="#B7C9E2"
+                android:textSize="15sp" />
+
+            <TextView
+                android:id="@+id/tvGuideStatus"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/guide_page_subtitle"
-                android:textColor="@color/colorTextSecondary"
-                android:textSize="14dp" />
-
-            <!-- 1. 无障碍服务 -->
-            <include
-                android:id="@+id/guideAccessibility"
-                layout="@layout/item_guide_section"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="32dp" />
-
-            <!-- 2. 常驻通知 -->
-            <include
-                android:id="@+id/guideNotification"
-                layout="@layout/item_guide_section"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp" />
-
-            <!-- 3. 悬浮窗 -->
-            <include
-                android:id="@+id/guideOverlay"
-                layout="@layout/item_guide_section"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp" />
-
-            <!-- 4. 电池白名单 -->
-            <include
-                android:id="@+id/guideBattery"
-                layout="@layout/item_guide_section"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp" />
-
-            <!-- 5. 文件访问 -->
-            <include
-                android:id="@+id/guideStorage"
-                layout="@layout/item_guide_section"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp" />
-
+                android:layout_marginTop="16dp"
+                android:background="@drawable/octobot_status_pill"
+                android:paddingHorizontal="14dp"
+                android:paddingVertical="8dp"
+                android:textColor="#63E7F4"
+                android:textSize="13sp"
+                android:visibility="gone" />
         </LinearLayout>
     </ScrollView>
 
-    <!-- 开始使用按钮 -->
-    <com.sikoclaw.app.widget.KButton
-        android:id="@+id/btnStart"
-        android:layout_width="match_parent"
-        android:layout_height="52dp"
-        android:layout_marginHorizontal="32dp"
-        android:layout_marginBottom="48dp"
-        android:text="@string/guide_start"
-        android:textSize="16dp"
-        app:layout_constraintBottom_toBottomOf="parent" />
+    <LinearLayout
+        android:id="@+id/actionBar"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:background="#051431"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="20dp"
+        android:paddingTop="12dp"
+        android:paddingEnd="20dp"
+        android:paddingBottom="24dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnBack"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="52dp"
+            android:minWidth="88dp"
+            android:text="@string/common_back"
+            android:textColor="#B7C9E2"
+            android:visibility="invisible" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnAction"
+            android:layout_width="0dp"
+            android:layout_height="52dp"
+            android:layout_marginStart="12dp"
+            android:layout_weight="1"
+            android:backgroundTint="#16CFE0"
+            android:textColor="#041229"
+            android:textStyle="bold"
+            app:cornerRadius="18dp" />
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

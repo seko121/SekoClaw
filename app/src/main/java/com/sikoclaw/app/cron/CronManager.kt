@@ -21,7 +21,16 @@ object CronManager{
  fun upsert(context:Context,job:CronJob){val x=all();x.removeAll{it.id==job.id};val j=job.copy(nextRun=if(job.enabled)next(job.expression)else 0);x.add(j);save(x);if(j.enabled)schedule(context,j)else cancel(context,j.id)}
  fun delete(context:Context,id:String){cancel(context,id);save(all().filterNot{it.id==id})}
  fun restore(context:Context)=all().filter{it.enabled}.forEach{schedule(context,it.copy(nextRun=next(it.expression)))}
- fun fired(context:Context,id:String){val j=all().firstOrNull{it.id==id&&it.enabled}?:return;context.startActivity(Intent(context,ComposeChatActivity::class.java).putExtra("task",j.prompt).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));upsert(context,j)}
+ fun fired(context:Context,id:String){
+  val j=all().firstOrNull{it.id==id&&it.enabled}?:return
+  if(com.sikoclaw.app.heartbeat.HeartbeatManager.isHeartbeatJob(id)&&!com.sikoclaw.app.heartbeat.HeartbeatManager.shouldRunNow()){
+   com.sikoclaw.app.heartbeat.HeartbeatManager.markRun("Skipped outside active hours")
+   upsert(context,j)
+   return
+  }
+  if(com.sikoclaw.app.heartbeat.HeartbeatManager.isHeartbeatJob(id)) com.sikoclaw.app.heartbeat.HeartbeatManager.markRun("Started")
+  context.startActivity(Intent(context,ComposeChatActivity::class.java).putExtra("task",j.prompt).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));upsert(context,j)
+ }
  private fun pending(c:Context,id:String)=PendingIntent.getBroadcast(c,id.hashCode(),Intent(c,CronReceiver::class.java).putExtra("id",id),PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
  private fun schedule(c:Context,j:CronJob){c.getSystemService(AlarmManager::class.java).setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,if(j.nextRun>System.currentTimeMillis())j.nextRun else next(j.expression),pending(c,j.id))}
  private fun cancel(c:Context,id:String)=c.getSystemService(AlarmManager::class.java).cancel(pending(c,id))

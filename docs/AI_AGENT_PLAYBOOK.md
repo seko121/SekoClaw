@@ -1,7 +1,7 @@
-# Siko Claw — Playbook for the Next AI Agent
+# OctoBot — Playbook for the Next AI Agent
 
 > Things the previous agent (me, 2026-05-25 / 2026-05-26) wishes someone had told them.
-> Read this BEFORE doing any QA or release work on Siko Claw. Saves ~3 hours per landmine.
+> Read this BEFORE doing any QA or release work on OctoBot. Saves ~3 hours per landmine.
 
 ---
 
@@ -90,7 +90,7 @@ If a side-project repo's `origin` is `git@github.com:agents-io/...`, push fails 
 git remote set-url origin git@github.com-personal:agents-io/REPO.git
 ```
 
-Siko Claw is already configured correctly; other side-projects may not be. See `~/MyGithub/agentic-journal/projects/3-ship/playbooks/side-project-repo-setup-checklist-2026-05-25.md`.
+OctoBot is already configured correctly; other side-projects may not be. See `~/MyGithub/agentic-journal/projects/3-ship/playbooks/side-project-repo-setup-checklist-2026-05-25.md`.
 
 ### 7. CI signing secrets ARE installed — don't trust stale `CLAUDE.local.md`
 
@@ -101,7 +101,7 @@ Siko Claw is already configured correctly; other side-projects may not be. See `
 `.github/workflows/emulator-matrix.yml` for Android emulator smoke tests:
 
 - **Component name**: launch via `com.sikoclaw.app/.ui.splash.SplashActivity` (not `com.apk.claw.android...` which is a pre-rename stale name).
-- **APK artifact path**: `actions/upload-artifact@v4` with a path-glob preserves directory structure. The `.apk` may be at `apk/app/build/outputs/apk/debug/Siko Claw_*.apk` not `apk/*.apk`. Always use `find apk -type f -name '*.apk'` not assume a flat layout.
+- **APK artifact path**: `actions/upload-artifact@v4` with a path-glob preserves directory structure. The `.apk` may be at `apk/app/build/outputs/apk/debug/OctoBot_*.apk` not `apk/*.apk`. Always use `find apk -type f -name '*.apk'` not assume a flat layout.
 
 ### 9. Component names changed during repo rename
 
@@ -141,10 +141,10 @@ adb shell settings put secure accessibility_enabled 1
 
 # Verify
 adb shell dumpsys accessibility | grep -E "Bound services|Enabled services"
-# Want to see: Bound services:{Service[label=Siko Claw, eventTypes=TYPES_ALL_MASK, ...]}
+# Want to see: Bound services:{Service[label=OctoBot, eventTypes=TYPES_ALL_MASK, ...]}
 ```
 
-**Trap:** if you `force-stop` Siko Claw after granting, the Accessibility binding may be lost. Re-run the bypass + `enabled_accessibility_services` write before the next chat-send test.
+**Trap:** if you `force-stop` OctoBot after granting, the Accessibility binding may be lost. Re-run the bypass + `enabled_accessibility_services` write before the next chat-send test.
 
 **Reverse:** clear all granted perms before user testing if you want a fresh-install QA.
 
@@ -158,9 +158,9 @@ v0.7.0 wired `PromptUtils.applyGlobalPrompt` into `AgentConfig.Builder.build()`.
 grep -rn "AgentConfig\.\|AgentConfig(\|toAgentConfig" app/src/main/java
 ```
 
-### 10. Siko Claw is a generic mobile-agent harness, NOT a missed-call product
+### 10. OctoBot is a generic mobile-agent harness, NOT a missed-call product
 
-There is a SEPARATE revenue product called `~/MyGithub/missed-call-ai-chatbot-lab`. Missed-call follow-up is its scope, not Siko Claw's. Siko Claw stays generic — 21 tools × 13 rules — per `ARCHITECTURE_DECISIONS.md` D2. Do NOT add per-vertical workflows (missed call, plumber, dentist...) to Siko Claw core. If a generic primitive is needed (e.g. "phone call state read tool"), add it as a tool, not a workflow.
+There is a SEPARATE revenue product called `~/MyGithub/missed-call-ai-chatbot-lab`. Missed-call follow-up is its scope, not OctoBot's. OctoBot stays generic — 21 tools × 13 rules — per `ARCHITECTURE_DECISIONS.md` D2. Do NOT add per-vertical workflows (missed call, plumber, dentist...) to OctoBot core. If a generic primitive is needed (e.g. "phone call state read tool"), add it as a tool, not a workflow.
 
 ---
 
@@ -191,9 +191,9 @@ adb shell pm clear com.sikoclaw.app
 
 ```bash
 source ~/.config/sikoclaw/release-signing.env   # exports KEYSTORE_FILE etc.
-cd ~/MyGithub/Siko Claw
+cd ~/MyGithub/OctoBot
 SIKOCLAW_VERSION_CODE=29 SIKOCLAW_VERSION_NAME=0.7.1 ./gradlew assembleRelease
-adb install -r app/build/outputs/apk/release/Siko Claw_v*.apk
+adb install -r app/build/outputs/apk/release/OctoBot_v*.apk
 ```
 
 ### Generate debug-report on signed release

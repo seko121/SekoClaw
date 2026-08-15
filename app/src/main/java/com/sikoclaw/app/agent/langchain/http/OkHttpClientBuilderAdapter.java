@@ -8,6 +8,8 @@ import com.sikoclaw.app.utils.XLog;
 import java.io.File;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
+import java.util.Collections;
+import java.util.Map;
 
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
@@ -38,6 +40,7 @@ public class OkHttpClientBuilderAdapter implements HttpClientBuilder {
 
     /** Whether to print the request body to logcat (off by default; LLM request bodies are large and repetitive) */
     private boolean logRequestBody = false;
+    private Map<String, String> customHeaders = Collections.emptyMap();
 
     public OkHttpClientBuilderAdapter() {
     }
@@ -50,6 +53,11 @@ public class OkHttpClientBuilderAdapter implements HttpClientBuilder {
 
     public OkHttpClientBuilderAdapter setLogRequestBody(boolean enabled) {
         this.logRequestBody = enabled;
+        return this;
+    }
+
+    public OkHttpClientBuilderAdapter setCustomHeaders(Map<String, String> headers) {
+        this.customHeaders = headers == null ? Collections.emptyMap() : headers;
         return this;
     }
 
@@ -78,10 +86,18 @@ public class OkHttpClientBuilderAdapter implements HttpClientBuilder {
     @Override
     public HttpClient build() {
         final boolean logReqBody = this.logRequestBody;
+        final Map<String, String> requestHeaders = this.customHeaders;
 
         // Custom interceptor: always print response; request body controlled by logRequestBody flag
         Interceptor llmLoggingInterceptor = chain -> {
             Request request = chain.request();
+            if (!requestHeaders.isEmpty()) {
+                Request.Builder withHeaders = request.newBuilder();
+                for (Map.Entry<String, String> entry : requestHeaders.entrySet()) {
+                    withHeaders.header(entry.getKey(), entry.getValue());
+                }
+                request = withHeaders.build();
+            }
             long startMs = System.nanoTime();
 
             // Request: log URL + method only; body controlled by flag

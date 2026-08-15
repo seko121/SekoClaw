@@ -13,17 +13,22 @@ class AgentMemoryTool : BaseTool() {
     override fun getParameters() = listOf(
         ToolParameter("action", "string", "read, append, or replace", true),
         ToolParameter("section", "string", "user or soul", true),
+        ToolParameter("key", "string", "Stable identifier for a user memory", false),
         ToolParameter("content", "string", "Content for append/replace", false)
     )
     override fun execute(params: Map<String, Any>): ToolResult {
         val action = requireString(params, "action").lowercase()
         val section = requireString(params, "section").lowercase()
-        val current = if (section == "soul") KVUtils.getSoulPrompt() else KVUtils.getUserMemoryPrompt()
+        if (section != "soul" && !KaiMemoryStore.isEnabled()) return ToolResult.error("Memories are disabled in Agent Settings")
+        val current = if (section == "soul") KVUtils.getSoulPrompt() else KaiMemoryStore.promptBlock()
         if (action == "read") return ToolResult.success(current.ifBlank { "No memory saved." })
         val content = optionalString(params, "content", "").trim()
         if (content.isBlank()) return ToolResult.error("content is required")
         val next = if (action == "append" && current.isNotBlank()) "$current\n$content" else content
-        if (section == "soul") KVUtils.setSoulPrompt(next) else KVUtils.setUserMemoryPrompt(next)
+        if (section == "soul") KVUtils.setSoulPrompt(next) else {
+            val key = params["key"]?.toString()?.trim().orEmpty().ifBlank { "memory-${System.currentTimeMillis()}" }
+            KaiMemoryStore.store(key, content)
+        }
         return ToolResult.success("$section memory updated")
     }
 }

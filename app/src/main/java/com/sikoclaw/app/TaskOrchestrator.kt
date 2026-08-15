@@ -255,7 +255,11 @@ class TaskOrchestrator(
         var floatingShown = false
 
         val agentPrompt = agentPromptOverride?.takeIf { it.isNotBlank() } ?: task
-        agentService.executeTask(agentPrompt, object : AgentCallback {
+        val fallbackRoutes = com.sikoclaw.app.agent.llm.MultiProviderStore.enabledRouting()
+        var fallbackIndex = 0
+        var toolAlreadyExecuted = false
+        lateinit var modelCallback: AgentCallback
+        modelCallback = object : AgentCallback {
             override fun onLoopStart(round: Int) {
                 flushRoundBuffer()
                 XLog.d(TAG, "onLoopStart: round=$round")
@@ -287,12 +291,13 @@ class TaskOrchestrator(
             override fun onContent(round: Int, content: String) {
                 if (content.isNotEmpty()) {
                     roundBuffer.append(content)
-                    taskEventCallback?.invoke(TaskEvent.Thinking(content))
+                    taskEventCallback?.invoke(TaskEvent.ContentDelta(content))
                 }
             }
 
             override fun onToolCall(round: Int, toolId: String, toolName: String, parameters: String) {
-                XLog.d(TAG, "onToolCall: $toolId($toolName), $parameters")
+                val safeParameters = redactToolSecrets(parameters)
+                XLog.d(TAG, "onToolCall: $toolId($toolName), $safeParameters")
                 // Don't show floating circle for finish tool (it's just completion, not a real action)
                 val isFinish = toolName == "finish" || toolId == "finish"
                 if (!floatingShown && !isFinish) {
@@ -303,12 +308,13 @@ class TaskOrchestrator(
                 }
                 if (toolName.isNotEmpty()) {
                     val displayName = com.sikoclaw.app.tool.ToolRegistry.getInstance().getDisplayName(toolName)
-                    taskEventCallback?.invoke(TaskEvent.ToolAction(displayName))
+                    taskEventCallback?.invoke(TaskEvent.ToolAction(displayName, "$round:$toolId", safeParameters, toolName))
                     ForegroundService.updateTaskStatus(ClawApplication.instance, "$displayName...")
                 }
             }
 
             override fun onToolResult(round: Int, toolId: String, toolName: String, parameters: String, result: ToolResult) {
+                if (toolId != "finish" && toolName != "finish") toolAlreadyExecuted = true
                 val app = ClawApplication.instance
                 val success = result.isSuccess
                 var data = if (success) result.data else result.error
@@ -316,7 +322,7 @@ class TaskOrchestrator(
                 if (!success) XLog.e(TAG, "Tool failed: $toolName $data")
 
                 val displayName = com.sikoclaw.app.tool.ToolRegistry.getInstance().getDisplayName(toolName)
-                taskEventCallback?.invoke(TaskEvent.ToolResult(displayName, success, data ?: ""))
+                taskEventCallback?.invoke(TaskEvent.ToolResult(displayName, success, data ?: "", "$round:$toolId"))
 
                 if (toolId == "finish" && result.data?.isNotEmpty() == true) {
                     flushRoundBuffer()
@@ -329,6 +335,7 @@ class TaskOrchestrator(
             }
 
             override fun onComplete(round: Int, finalAnswer: String, totalTokens: Int, modelName: String?) {
+                com.sikoclaw.app.agent.llm.MultiProviderStore.selectRuntimeModel(null)
                 XLog.i(TAG, "onComplete: rounds=$round, totalTokens=$totalTokens, model=$modelName, answer=$finalAnswer")
                 val cancelAnswers = setOf(
                     ClawApplication.instance.getString(R.string.agent_task_cancel),
@@ -363,9 +370,9 @@ class TaskOrchestrator(
                 val completedSession = releaseTask()
                 ChannelManager.flushMessages(completedSession.channel ?: channel)
                 FloatingCircleManager.setSuccessState()
-                // Auto-return to Siko Claw after in-app task completes
+                // Auto-return to OctoBot after in-app task completes
                 if (completedSession.autoReturnToChat) {
-                    XLog.i(TAG, "onComplete: auto-returning to Siko Claw chatroom")
+                    XLog.i(TAG, "onComplete: auto-returning to OctoBot chatroom")
                     try {
                         val context = ClawApplication.instance
                         val intent = android.content.Intent(context, com.sikoclaw.app.ui.chat.ComposeChatActivity::class.java).apply {
@@ -382,7 +389,23 @@ class TaskOrchestrator(
 
             override fun onError(round: Int, error: Exception, totalTokens: Int) {
                 XLog.e(TAG, "onError: ${error.message}, totalTokens=$totalTokens", error)
-                taskEventCallback?.invoke(TaskEvent.Failed(error.message ?: "Unknown error"))
+                val friendlyError = com.sikoclaw.app.agent.llm.kai.KaiProviderGateway.friendlyError(error)
+                val cancelled = error is java.util.concurrent.CancellationException || error.message?.contains("cancel", ignoreCase = true) == true
+                if (fallbackIndex + 1 < fallbackRoutes.size && com.sikoclaw.app.agent.llm.MultiProviderStore.shouldFallback(error, toolAlreadyExecuted, cancelled, fallbackRoutes[fallbackIndex + 1].second.id != fallbackRoutes[fallbackIndex].second.id)) {
+                    fallbackIndex++
+                    val next = fallbackRoutes[fallbackIndex]
+                    com.sikoclaw.app.agent.llm.MultiProviderStore.selectRuntimeModel(next.first.id)
+                    roundBuffer.clear()
+                    taskEventCallback?.invoke(TaskEvent.ToolAction("Switched to ${next.first.displayName} because $friendlyError"))
+                    return try {
+                        agentService.updateConfig(agentConfigProvider())
+                        agentService.executeTask(agentPrompt, modelCallback)
+                    } catch (fallbackError: Exception) {
+                        XLog.e(TAG, "Fallback model could not start", fallbackError)
+                    }
+                }
+                com.sikoclaw.app.agent.llm.MultiProviderStore.selectRuntimeModel(null)
+                taskEventCallback?.invoke(TaskEvent.Failed(friendlyError))
                 ForegroundService.resetToIdle(ClawApplication.instance)
                 flushRoundBuffer()
                 val failedSession = releaseTask()
@@ -390,7 +413,7 @@ class TaskOrchestrator(
                 val failedMessageId = failedSession.messageId.ifEmpty { messageID }
                 ChannelManager.sendMessage(
                     failedChannel,
-                    ClawApplication.instance.getString(R.string.channel_msg_task_error, error.message),
+                    ClawApplication.instance.getString(R.string.channel_msg_task_error, friendlyError),
                     failedMessageId
                 )
                 ChannelManager.flushMessages(failedChannel)
@@ -425,6 +448,11 @@ class TaskOrchestrator(
                 FloatingCircleManager.setErrorState()
                 onTaskFinished()
             }
-        })
+        }
+        agentService.executeTask(agentPrompt, modelCallback)
     }
+
+    private fun redactToolSecrets(raw: String): String = raw
+        .replace(Regex("(?i)(\\\"?(?:api[_-]?key|token|authorization|password)\\\"?\\s*[:=]\\s*\\\")[^\\\"]*"), "$1••••")
+        .replace(Regex("(?i)(bearer\\s+)[A-Za-z0-9._~+/-]+"), "$1••••")
 }

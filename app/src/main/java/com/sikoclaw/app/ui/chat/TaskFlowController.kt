@@ -59,9 +59,13 @@ class TaskFlowController(
 
     private var sendTaskRetryCount = 0
     private var lastMonitorStatusNote: String? = null
+    private val liveRawContent = StringBuilder()
     private val pipelineRouter = PipelineRouter(activity)
 
     fun sendTask(text: String) {
+        if (com.sikoclaw.app.floating.FloatingAssistantConfig.enabled() && com.sikoclaw.app.floating.FloatingAssistantConfig.autoStart()) {
+            runCatching { androidx.core.content.ContextCompat.startForegroundService(activity, Intent(activity, com.sikoclaw.app.floating.FloatingAssistantService::class.java)) }
+        }
         if (appViewModel.isTaskRunning()) {
             addSystem("Another task is still running. Stop it first.")
             onTaskTerminal?.invoke(TaskEvent.Failed("Another task is still running. Stop it first."))
@@ -93,7 +97,7 @@ class TaskFlowController(
                     XLog.i(TAG, "sendTask: allowing non-interactive task without Accessibility")
                 } else {
                 Toast.makeText(activity, "Enable Accessibility Service to run tasks", Toast.LENGTH_LONG).show()
-                addSystem("⚠️ Task mode needs Accessibility Service enabled. Opening Settings...")
+                addSystem("âš ï¸ Task mode needs Accessibility Service enabled. Opening Settings...")
                 openSettings()
                 sendTaskRetryCount = 0
                 onTaskTerminal?.invoke(TaskEvent.Failed("Accessibility Service is required for this task."))
@@ -169,6 +173,8 @@ class TaskFlowController(
         }
 
         val agentPromptOverride = buildAgentPromptOverride(text)
+        liveRawContent.clear()
+        com.sikoclaw.app.agent.memory.ExplicitMemoryCapture.capture(text)
         addUser(text)
         uiState.isAwaitingReply.value = true
         uiState.isTaskRunning.value = false
@@ -276,8 +282,8 @@ class TaskFlowController(
         Handler(Looper.getMainLooper()).postDelayed({
             uiState.isAwaitingReply.value = false
             uiState.isTaskRunning.value = false
-            addSystem("✓ Auto-reply is now active for ${target.displayLabel}.\nMonitoring in background — you can stop anytime from the bar above.")
-            XLog.i(TAG, "startMonitor: monitor active, staying in Siko Claw")
+            addSystem("âœ“ Auto-reply is now active for ${target.displayLabel}.\nMonitoring in background â€” you can stop anytime from the bar above.")
+            XLog.i(TAG, "startMonitor: monitor active, staying in OctoBot")
         }, 1500)
     }
 
@@ -306,17 +312,36 @@ class TaskFlowController(
                     cleanupAfterTask()
                 }
                 is TaskEvent.ToolAction -> {
+                    if (event.toolName.contains("tap", true) || event.toolName.contains("swipe", true) || event.toolName.contains("input", true) || event.toolName.contains("pointer", true) || event.toolName.contains("screen", true)) {
+                        com.sikoclaw.app.service.AgentControlSession.start()
+                    }
                     uiState.isAwaitingReply.value = false
                     uiState.isTaskRunning.value = true
                     if (!event.toolName.contains("Finish", ignoreCase = true)) {
                         removeTypingIndicator()
-                        addSystem("${event.toolName}...")
+                        val summary = toolSummary(event.rawToolName, event.parameters)
+                        ToolActivityReducer.start(
+                            uiState.messages,
+                            ToolStep(
+                                toolName = event.toolName,
+                                summary = summary,
+                                callId = event.callId,
+                                details = event.parameters.take(4_000),
+                                status = ToolActivityStatus.RUNNING,
+                                rawToolName = event.rawToolName,
+                            )
+                        )
                     }
                 }
                 is TaskEvent.ToolResult -> {
                     uiState.isAwaitingReply.value = false
                     uiState.isTaskRunning.value = true
-                    if (!event.success) addSystem("${event.toolName} failed")
+                    ToolActivityReducer.finish(
+                        uiState.messages,
+                        event.callId,
+                        event.success,
+                        event.detail.take(4_000),
+                    )
                 }
                 is TaskEvent.Response -> {
                     uiState.isAwaitingReply.value = false
@@ -331,40 +356,63 @@ class TaskFlowController(
                     uiState.isAwaitingReply.value = false
                     uiState.isTaskRunning.value = true
                 }
-                is TaskEvent.Thinking -> {
+                is TaskEvent.ContentDelta -> {
                     uiState.isAwaitingReply.value = false
                     uiState.isTaskRunning.value = true
-                    appendLiveThinking(event.content)
+                    appendLiveContent(event.content)
                 }
+                is TaskEvent.ReasoningDelta -> appendLiveReasoning(event.content)
                 is TaskEvent.TokenUpdate -> Unit
             }
         } catch (e: Exception) {
             XLog.w(TAG, "handleTaskEvent error", e)
+            com.sikoclaw.app.service.AgentControlSession.stop(true)
         }
     }
 
     private fun replaceTypingIndicator(text: String, actualModelName: String? = null) {
         val modelTag = actualModelName
-            ?: uiState.modelStatus.value.removePrefix("● ").split(" ·").firstOrNull()?.trim()
+            ?: uiState.modelStatus.value.removePrefix("â— ").split(" Â·").firstOrNull()?.trim()
             ?: ""
-        val idx = uiState.messages.indexOfLast { it.role == ChatMessage.Role.ASSISTANT && (it.content == "..." || it.content.startsWith("Thinking…\n")) }
+        val cleanText = finalAssistantText(text).ifBlank { "I couldn't produce a final response. Please try again." }
+        val parts = cleanText.split("<message-break>").map(String::trim).filter(String::isNotBlank).ifEmpty { listOf(cleanText) }
+        val idx = uiState.messages.indexOfLast { it.role == ChatMessage.Role.ASSISTANT && (it.content == "..." || it.isStreaming) }
         if (idx >= 0) {
-            uiState.messages[idx] = ChatMessage(ChatMessage.Role.ASSISTANT, text, modelName = modelTag)
+            uiState.messages[idx] = ChatMessage(ChatMessage.Role.ASSISTANT, parts.first(), modelName = modelTag)
+            parts.drop(1).forEachIndexed { offset, part -> uiState.messages.add(idx + offset + 1, ChatMessage(ChatMessage.Role.ASSISTANT, part, modelName = modelTag)) }
         } else {
-            uiState.messages.add(ChatMessage(ChatMessage.Role.ASSISTANT, text, modelName = modelTag))
+            parts.forEach { uiState.messages.add(ChatMessage(ChatMessage.Role.ASSISTANT, it, modelName = modelTag)) }
         }
+        val reasoningIndex = uiState.messages.indexOfLast { it.role == ChatMessage.Role.REASONING && it.isStreaming }
+        if (reasoningIndex >= 0) uiState.messages[reasoningIndex] = uiState.messages[reasoningIndex].copy(isStreaming = false)
+        liveRawContent.clear()
         onPersistConversation()
     }
 
-    private fun appendLiveThinking(token: String) {
-        val idx = uiState.messages.indexOfLast {
-            it.role == ChatMessage.Role.ASSISTANT && (it.content == "..." || it.content.startsWith("Thinking…\n"))
+    private fun appendLiveContent(token: String) {
+        liveRawContent.append(token)
+        val parsed = AssistantStreamParser.parse(liveRawContent.toString())
+        if (KVUtils.getBoolean("SHOW_AGENT_THOUGHTS", false) && parsed.reasoning.isNotBlank()) {
+            updateReasoningMessage(parsed.reasoning)
         }
-        if (idx >= 0) {
-            val old = uiState.messages[idx].content.removePrefix("Thinking…\n")
-            uiState.messages[idx] = ChatMessage(ChatMessage.Role.ASSISTANT, "Thinking…\n" + old + token)
-        } else {
-            uiState.messages.add(ChatMessage(ChatMessage.Role.ASSISTANT, "Thinking…\n$token"))
+        if (parsed.visible.isBlank()) return
+        val idx = uiState.messages.indexOfLast { it.role == ChatMessage.Role.ASSISTANT && (it.content == "..." || it.isStreaming) }
+        val message = ChatMessage(ChatMessage.Role.ASSISTANT, parsed.visible, isStreaming = true)
+        if (idx >= 0) uiState.messages[idx] = message else uiState.messages.add(message)
+    }
+
+    private fun appendLiveReasoning(token: String) {
+        if (!KVUtils.getBoolean("SHOW_AGENT_THOUGHTS", false)) return
+        val previous = uiState.messages.lastOrNull { it.role == ChatMessage.Role.REASONING && it.isStreaming }?.content.orEmpty()
+        updateReasoningMessage(previous + token)
+    }
+
+    private fun updateReasoningMessage(text: String) {
+        val idx = uiState.messages.indexOfLast { it.role == ChatMessage.Role.REASONING && it.isStreaming }
+        val message = ChatMessage(ChatMessage.Role.REASONING, text, isStreaming = true)
+        if (idx >= 0) uiState.messages[idx] = message else {
+            val typing = uiState.messages.indexOfLast { it.role == ChatMessage.Role.ASSISTANT && it.content == "..." }
+            if (typing >= 0) uiState.messages.add(typing, message) else uiState.messages.add(message)
         }
     }
 
@@ -374,6 +422,7 @@ class TaskFlowController(
     }
 
     private fun cleanupAfterTask() {
+        com.sikoclaw.app.service.AgentControlSession.stop()
         XLog.i(TAG, "cleanupAfterTask: isProcessing=FALSE")
         uiState.isAwaitingReply.value = false
         uiState.isTaskRunning.value = false
@@ -402,11 +451,11 @@ class TaskFlowController(
             lastMonitorStatusNote = null
             return
         }
-        val note = "✓ Auto-reply active for $contacts.\nMonitoring in background — stop from bar above."
+        val note = "âœ“ Auto-reply active for $contacts.\nMonitoring in background â€” stop from bar above."
         if (note == lastMonitorStatusNote) return
         addSystem(note)
         lastMonitorStatusNote = note
-        XLog.i(TAG, "checkAutoReplyConfirmation: monitor active, staying in Siko Claw")
+        XLog.i(TAG, "checkAutoReplyConfirmation: monitor active, staying in OctoBot")
     }
 
     private fun ensureNotificationPermission() {
@@ -418,11 +467,26 @@ class TaskFlowController(
     }
 
     private fun addUser(text: String) {
-        uiState.messages.add(ChatMessage(ChatMessage.Role.USER, text))
+        val payload = PluginMessageCodec.decode(text)
+        val attachmentPayload = ChatAttachmentManager.decode(payload.visibleText)
+        uiState.messages.add(ChatMessage(ChatMessage.Role.USER, attachmentPayload.visibleText, pluginIds = payload.pluginIds, attachments = attachmentPayload.attachments))
     }
 
     private fun addSystem(text: String) {
         uiState.messages.add(ChatMessage(ChatMessage.Role.SYSTEM, text))
+    }
+
+    private fun toolSummary(rawName: String, parameters: String): String {
+        val compact = parameters.replace(Regex("\\s+"), " ").trim().take(180)
+        val verb = when {
+            rawName.contains("terminal", true) || rawName.contains("shell", true) -> "Running"
+            rawName.contains("search", true) -> "Searching"
+            rawName.contains("file", true) || rawName.contains("document", true) -> "Accessing file"
+            rawName.contains("mcp", true) -> "Using connection"
+            rawName.contains("browser", true) || rawName.contains("web", true) -> "Browsing"
+            else -> "Working"
+        }
+        return if (compact.isBlank() || compact == "{}") verb else "$verb: $compact"
     }
 
     private fun openSettings() {
@@ -469,3 +533,4 @@ class TaskFlowController(
         return mentionsMonitor || looksLikeWatchMessages
     }
 }
+

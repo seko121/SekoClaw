@@ -30,7 +30,7 @@ import java.util.HashSet;
  * Also provides cancelNotification() to dismiss notifications after replying,
  * ensuring the next message triggers a fresh notification event.
  *
- * Requires: Settings → Notification Access → Siko Claw enabled.
+ * Requires: Settings → Notification Access → OctoBot enabled.
  */
 public class ClawNotificationListener extends NotificationListenerService {
 

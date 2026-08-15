@@ -158,6 +158,7 @@ public class GetDeviceInfoTool extends BaseTool {
         return ToolResult.success(result);
     }
 
+    @android.annotation.SuppressLint("MissingPermission") // guarded by the runtime BLUETOOTH_CONNECT check below
     private ToolResult getBluetoothInfo() {
         BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
         if (adapter == null) {
@@ -169,6 +170,13 @@ public class GetDeviceInfoTool extends BaseTool {
 
         StringBuilder sb = new StringBuilder();
         sb.append("Bluetooth: enabled");
+
+        if (android.os.Build.VERSION.SDK_INT >= 31 &&
+                androidx.core.content.ContextCompat.checkSelfPermission(
+                        com.sikoclaw.app.ClawApplication.Companion.getInstance(),
+                        android.Manifest.permission.BLUETOOTH_CONNECT) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            return ToolResult.success(sb + " (paired devices require Bluetooth permission)");
+        }
 
         try {
             Set<BluetoothDevice> bonded = adapter.getBondedDevices();

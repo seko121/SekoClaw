@@ -12,20 +12,40 @@ import java.util.ArrayDeque
  * Architecture reference:
  * - Sliding window (8 steps), same-action, screen-unchanged, high-repetition
  * - ralph-claude-code: repeated-error detection
- * - Siko Claw original: screen diff (previousScreenTexts)
+ * - OctoBot original: screen diff (previousScreenTexts)
  *
  * Recovery is 3-level:
  *   Level 1: Inject recovery hint into prompt
  *   Level 2: Suggest strategy switch (different tool)
  *   Level 3: Auto-kill (force finish)
  */
-class StuckDetector(private val windowSize: Int = 8) {
+enum class StuckDetectionMode(val evidenceThreshold: Int, val killThreshold: Int) {
+    RELAXED(10, 8), BALANCED(6, 6), STRICT(4, 4), DISABLED(Int.MAX_VALUE, Int.MAX_VALUE);
+
+    companion object {
+        fun current(): StuckDetectionMode = runCatching {
+            valueOf(com.sikoclaw.app.utils.KVUtils.getString("STUCK_DETECTION_MODE", BALANCED.name))
+        }.getOrDefault(BALANCED)
+    }
+}
+
+object StuckControl {
+    private val continueGeneration = java.util.concurrent.atomic.AtomicLong(0)
+    fun continueAnyway() { continueGeneration.incrementAndGet() }
+    fun generation(): Long = continueGeneration.get()
+}
+
+class StuckDetector(
+    private val windowSize: Int = 12,
+    private val mode: StuckDetectionMode = StuckDetectionMode.current(),
+) {
 
     private val actions = ArrayDeque<String>(windowSize + 1)
     private val screenHashes = ArrayDeque<Int>(windowSize + 1)
     private val screenDiffCounts = ArrayDeque<Int>(windowSize + 1)
     private val errors = ArrayDeque<String>(windowSize + 1)
     private var consecutiveStuckSteps = 0
+    private var continueGeneration = StuckControl.generation()
 
     sealed class Signal(val description: String) {
         class SameAction(val action: String, val count: Int) :
@@ -66,6 +86,13 @@ class StuckDetector(private val windowSize: Int = 8) {
      * @return Detection if stuck, null if OK
      */
     fun record(action: String, screenHash: Int, screenDiffCount: Int, error: String?): Detection? {
+        if (mode == StuckDetectionMode.DISABLED) return null
+        val requestedGeneration = StuckControl.generation()
+        if (requestedGeneration != continueGeneration) {
+            continueGeneration = requestedGeneration
+            reset()
+            return null
+        }
         // Add to sliding windows
         actions.addLast(action)
         if (actions.size > windowSize) actions.removeFirst()
@@ -92,14 +119,19 @@ class StuckDetector(private val windowSize: Int = 8) {
 
         if (signal != null) {
             consecutiveStuckSteps++
+            // Screen text/hash staying stable is weak evidence (loading, video, canvas,
+            // keyboard and long network work can all keep it unchanged). It can request a
+            // re-evaluation, but can never terminate a task by itself.
+            val strongLoop = signal is Signal.RepeatedError || signal is Signal.SameAction || signal is Signal.HighRepetition
             val level = when {
-                consecutiveStuckSteps >= 5 -> RecoveryLevel.AUTO_KILL
+                strongLoop && consecutiveStuckSteps >= mode.killThreshold -> RecoveryLevel.AUTO_KILL
                 consecutiveStuckSteps >= 3 -> RecoveryLevel.STRATEGY_SWITCH
                 else -> RecoveryLevel.HINT
             }
             val hint = generateRecoveryHint(signal, level)
             val detection = Detection(signal, level, hint)
-            XLog.w(TAG, "[StuckDetector] ${signal.description} → Level ${level.name}")
+            // Logging is best-effort so this pure detector also runs in local JVM tests.
+            runCatching { XLog.w(TAG, "[StuckDetector] ${signal.description} → Level ${level.name}") }
             return detection
         }
 
@@ -109,26 +141,29 @@ class StuckDetector(private val windowSize: Int = 8) {
     }
 
     private fun checkSameAction(): Signal? {
-        if (actions.size < 3) return null
-        val last3 = actions.toList().takeLast(3)
-        return if (last3.all { it == last3[0] }) {
-            Signal.SameAction(last3[0].take(50), 3)
+        val threshold = mode.evidenceThreshold.coerceAtMost(windowSize)
+        if (actions.size < threshold) return null
+        val recent = actions.toList().takeLast(threshold)
+        return if (recent.all { it.isNotBlank() && it == recent[0] }) {
+            Signal.SameAction(recent[0].take(50), threshold)
         } else null
     }
 
     private fun checkScreenUnchanged(): Signal? {
-        if (screenHashes.size < 3) return null
-        val last3 = screenHashes.toList().takeLast(3)
-        return if (last3.all { it == last3[0] }) {
-            Signal.ScreenUnchanged(3)
+        val threshold = mode.evidenceThreshold.coerceAtMost(windowSize)
+        if (screenHashes.size < threshold) return null
+        val recent = screenHashes.toList().takeLast(threshold)
+        return if (recent.all { it == recent[0] }) {
+            Signal.ScreenUnchanged(threshold)
         } else null
     }
 
     private fun checkZeroDiff(): Signal? {
-        if (screenDiffCounts.size < 3) return null
-        val last3 = screenDiffCounts.toList().takeLast(3)
-        return if (last3.all { it == 0 }) {
-            Signal.ZeroDiff(3)
+        val threshold = mode.evidenceThreshold.coerceAtMost(windowSize)
+        if (screenDiffCounts.size < threshold) return null
+        val recent = screenDiffCounts.toList().takeLast(threshold)
+        return if (recent.all { it == 0 }) {
+            Signal.ZeroDiff(threshold)
         } else null
     }
 
@@ -136,16 +171,17 @@ class StuckDetector(private val windowSize: Int = 8) {
         if (actions.size < windowSize) return null
         val counts = actions.groupingBy { it }.eachCount()
         val maxEntry = counts.maxByOrNull { it.value } ?: return null
-        return if (maxEntry.value >= 3) {
+        return if (maxEntry.value >= mode.evidenceThreshold.coerceAtMost(windowSize)) {
             Signal.HighRepetition(maxEntry.key.take(50), maxEntry.value, windowSize)
         } else null
     }
 
     private fun checkRepeatedError(): Signal? {
-        if (errors.size < 3) return null
-        val last3 = errors.toList().takeLast(3)
-        return if (last3.all { it == last3[0] }) {
-            Signal.RepeatedError(last3[0].take(80), 3)
+        val threshold = mode.evidenceThreshold.coerceAtMost(windowSize)
+        if (errors.size < threshold) return null
+        val recent = errors.toList().takeLast(threshold)
+        return if (recent.all { it == recent[0] }) {
+            Signal.RepeatedError(recent[0].take(80), threshold)
         } else null
     }
 

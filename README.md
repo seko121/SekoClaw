@@ -1,7 +1,7 @@
-# Siko Claw
+# OctoBot
 
 <p align="center">
-  <img src="branding/siko-claw-logo.png" width="180" alt="Siko Claw logo" />
+  <img src="branding/octobot-logo.webp" width="180" alt="OctoBot logo" />
 </p>
 
 <p align="center">
@@ -14,23 +14,22 @@
   <img src="https://img.shields.io/badge/License-Apache%202.0-blue" alt="Apache 2.0" />
 </p>
 
-Siko Claw is an open-source Android AI agent built from the PokeClaw foundation. It combines chat, device automation, reusable skills, scheduled tasks, external MCP tools, web access, persistent prompts and a private Linux terminal in one phone-resident experience.
+OctoBot is an open-source Android AI agent built from the PokeClaw foundation. It combines chat, device automation, reusable skills, scheduled tasks, external MCP tools, web access, persistent prompts and a private Linux terminal in one phone-resident experience.
 
 The project supports local-first execution as well as OpenAI-compatible cloud providers. The agent can inspect the current screen, choose tools, operate apps and complete multi-step tasks without requiring a permanently connected computer.
 
 ## New experience
 
-The latest update introduces a unified dark design system across the agent-management screens, with safe system insets, compact settings cards, accessible touch targets and cyan primary actions.
+The latest update introduces OctoBot branding, onboarding, live agent streaming, compact tool activity, provider routing, voice calls, a floating assistant, browser and terminal access, plus unified dark/cyan management screens.
 
 <p align="center">
-  <img src="docs/screenshots/siko-drawer.png" width="260" alt="Siko Claw navigation drawer" />
-  <img src="docs/screenshots/siko-tools.png" width="260" alt="Manage Tools screen" />
-  <img src="docs/screenshots/siko-mcp.png" width="260" alt="MCP Servers screen" />
+  <img src="docs/screenshots/octobot-chat.png" width="260" alt="OctoBot chat" />
+  <img src="docs/screenshots/octobot-services.png" width="260" alt="OctoBot services" />
+  <img src="docs/screenshots/octobot-terminal.png" width="260" alt="OctoBot terminal" />
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/siko-terminal.png" width="260" alt="Internal Terminal screen" />
-  <img src="docs/screenshots/siko-terminal-landscape.png" width="540" alt="Responsive Terminal in landscape" />
+  <img src="docs/screenshots/octobot-floating-assistant.png" width="300" alt="OctoBot floating assistant" />
 </p>
 
 ## Highlights
@@ -66,7 +65,7 @@ The shared UI layer provides consistent top app bars, cards, rows, toggles, stat
 
 ## Model providers
 
-Siko Claw accepts OpenAI-compatible APIs, including providers such as OpenRouter, Groq, Together AI and self-hosted endpoints. Enter an endpoint and API key, retrieve the available models and select the model you want to activate.
+OctoBot accepts OpenAI-compatible APIs, including providers such as OpenRouter, Groq, Together AI and self-hosted endpoints. Enter an endpoint and API key, retrieve the available models and select the model you want to activate.
 
 ## Build
 
@@ -98,11 +97,11 @@ Only grant permissions you understand, and review enabled tools before allowing 
 
 ## Project status
 
-Siko Claw is under active development. Device behavior can vary by Android version and manufacturer, so real-device reports are welcome through [GitHub Issues](https://github.com/seko121/SekoClaw/issues).
+OctoBot is under active development. Device behavior can vary by Android version and manufacturer, so real-device reports are welcome through [GitHub Issues](https://github.com/seko121/SekoClaw/issues).
 
 ## Attribution
 
-Siko Claw is based on the open-source [PokeClaw](https://github.com/agents-io/PokeClaw) project and continues under the repository's Apache 2.0 license and attribution requirements.
+OctoBot is based on the open-source [PokeClaw](https://github.com/agents-io/PokeClaw) project and continues under the repository's Apache 2.0 license and attribution requirements.
 
 ## License
 

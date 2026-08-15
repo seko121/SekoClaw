@@ -3,6 +3,10 @@
 
 package com.sikoclaw.app
 
+import android.app.Activity
+import android.app.Application
+import android.content.Intent
+import android.os.Bundle
 import com.sikoclaw.app.agent.DefaultAgentService
 import com.sikoclaw.app.agent.llm.LocalBackendHealth
 import com.sikoclaw.app.base.BaseApp
@@ -34,8 +38,14 @@ class ClawApplication : BaseApp() {
         AppLogStore.init(this)
         XLog.setDEBUG(BuildConfig.DEBUG)
         registerNetworkCallback()
-        appViewModelInstance = getAppViewModelProvider()[AppViewModel::class.java]
         KVUtils.init(this)
+        com.sikoclaw.app.agent.llm.MultiProviderStore.migrateLegacyIfNeeded()
+        com.sikoclaw.app.agent.llm.MultiProviderStore.ensureBuiltInFreeModel()
+        // Model-backed ViewModels must be created only after both MMKV and the
+        // built-in route are ready. Creating them earlier cached the legacy
+        // LOCAL/empty selection and produced a false "No model selected" state.
+        appViewModelInstance = getAppViewModelProvider()[AppViewModel::class.java]
+        registerFloatingAssistantVisibility()
         LocalBackendHealth.recoverPendingGpuCrashIfNeeded()
         ToolRegistry.getInstance().registerAllTools(ToolRegistry.DeviceType.MOBILE)
         com.sikoclaw.app.agent.skill.SkillRegistry.loadBuiltInSkills()
@@ -53,7 +63,6 @@ class ClawApplication : BaseApp() {
         Thread({
             try {
                 android.util.Log.e("SIKOCLAW_INIT", "app-async-init thread STARTED")
-                com.sikoclaw.app.tool.terminal.InternalTerminal.bootstrapBundled()
                 val mcpTools = com.sikoclaw.app.mcp.McpManager.connectEnabled()
                 XLog.i(TAG, "Loaded $mcpTools MCP tools")
                 val hasConfig = KVUtils.hasLlmConfig()
@@ -66,6 +75,30 @@ class ClawApplication : BaseApp() {
                 android.util.Log.e("SIKOCLAW_INIT", "app-async-init CRASHED: ${e.message}", e)
             }
         }, "app-async-init").start()
+    }
+
+    private fun registerFloatingAssistantVisibility() {
+        var started = 0
+        registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
+            override fun onActivityStarted(activity: Activity) {
+                started++
+                com.sikoclaw.app.floating.FloatingAssistantManager.setAppForeground(true)
+            }
+            override fun onActivityStopped(activity: Activity) {
+                started = (started - 1).coerceAtLeast(0)
+                android.os.Handler(mainLooper).postDelayed({
+                    if (started == 0 && com.sikoclaw.app.floating.FloatingAssistantConfig.enabled() && android.provider.Settings.canDrawOverlays(this@ClawApplication)) {
+                        com.sikoclaw.app.floating.FloatingAssistantManager.setAppForeground(false)
+                        androidx.core.content.ContextCompat.startForegroundService(this@ClawApplication, Intent(this@ClawApplication, com.sikoclaw.app.floating.FloatingAssistantService::class.java))
+                    }
+                }, 250)
+            }
+            override fun onActivityCreated(activity: Activity, state: Bundle?) = Unit
+            override fun onActivityResumed(activity: Activity) = Unit
+            override fun onActivityPaused(activity: Activity) = Unit
+            override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
+            override fun onActivityDestroyed(activity: Activity) = Unit
+        })
     }
 
     private var networkListener: NetworkUtils.OnNetworkStatusChangedListener? = null

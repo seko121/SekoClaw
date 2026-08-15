@@ -1,0 +1,6 @@
+package com.sikoclaw.app.floating
+import com.sikoclaw.app.utils.KVUtils
+object FloatingAssistantConfig {
+ private const val E="FLOAT_ASSISTANT_ENABLED";private const val S="FLOAT_ASSISTANT_SIZE";private const val O="FLOAT_ASSISTANT_OPACITY";private const val N="FLOAT_ASSISTANT_SNAP";private const val A="FLOAT_ASSISTANT_ACTIONS";private const val P="FLOAT_ASSISTANT_PREVIEWS";private const val AS="FLOAT_ASSISTANT_AUTO_START";private const val AP="FLOAT_ASSISTANT_AUTO_STOP"
+ fun enabled()=KVUtils.getBoolean(E,false);fun setEnabled(v:Boolean)=KVUtils.putBoolean(E,v);fun size()=KVUtils.getInt(S,56).coerceIn(44,80);fun setSize(v:Int)=KVUtils.putInt(S,v.coerceIn(44,80));fun opacity()=KVUtils.getInt(O,100).coerceIn(40,100);fun setOpacity(v:Int)=KVUtils.putInt(O,v.coerceIn(40,100));fun snap()=KVUtils.getBoolean(N,true);fun setSnap(v:Boolean)=KVUtils.putBoolean(N,v);fun showActions()=KVUtils.getBoolean(A,true);fun setShowActions(v:Boolean)=KVUtils.putBoolean(A,v);fun showPreviews()=KVUtils.getBoolean(P,true);fun setShowPreviews(v:Boolean)=KVUtils.putBoolean(P,v);fun autoStart()=KVUtils.getBoolean(AS,true);fun setAutoStart(v:Boolean)=KVUtils.putBoolean(AS,v);fun autoStop()=KVUtils.getBoolean(AP,false);fun setAutoStop(v:Boolean)=KVUtils.putBoolean(AP,v)
+}

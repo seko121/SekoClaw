@@ -3,6 +3,7 @@
 
 package com.sikoclaw.app.ui.settings
 
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.Rect
 import android.graphics.drawable.GradientDrawable
@@ -350,8 +351,9 @@ class LlmConfigActivity : BaseActivity() {
         // Storage info
         updateStorageInfo()
 
-        // Cloud LLM — Provider tabs + model cards
-        setupCloudLlm(tc)
+        // Cloud providers moved to Services. Keep this legacy activity local-only.
+        findViewById<android.view.View>(R.id.legacyCloudTitle).visibility = android.view.View.GONE
+        findViewById<android.view.View>(R.id.legacyCloudCard).visibility = android.view.View.GONE
     }
 
     private fun updateStorageInfo() {
@@ -393,6 +395,9 @@ class LlmConfigActivity : BaseActivity() {
         }
 
         installKeyboardAwareScrolling(scrollView, listOf(etApiKey, etBaseUrl, etModelName))
+        tvCustomHint?.setOnClickListener {
+            startActivity(Intent(this, ProviderManagementActivity::class.java))
+        }
 
         // Clear API key button
         btnClear.setOnClickListener {
@@ -644,6 +649,25 @@ class LlmConfigActivity : BaseActivity() {
                 apiKey = apiKey,
                 activateNow = !ModelConfigRepository.isLocalActive()
             )
+            if (isCustom) {
+                val saved = com.sikoclaw.app.agent.llm.MultiProviderStore.state()
+                val provider = saved.providers.firstOrNull { it.baseUrl.equals(baseUrl.trimEnd('/'), true) }
+                    ?: com.sikoclaw.app.agent.llm.ApiProviderConfig(
+                        name = runCatching { java.net.URI(baseUrl).host }.getOrNull().orEmpty().ifBlank { "Custom provider" },
+                        baseUrl = baseUrl.trimEnd('/'),
+                        isDefault = saved.providers.isEmpty(),
+                    )
+                com.sikoclaw.app.agent.llm.MultiProviderStore.saveProvider(provider, apiKey)
+                val existingModel = saved.models.firstOrNull { it.providerId == provider.id && it.apiModelName == modelId }
+                com.sikoclaw.app.agent.llm.MultiProviderStore.saveModel(
+                    existingModel ?: com.sikoclaw.app.agent.llm.ApiModelConfig(
+                        providerId = provider.id,
+                        displayName = modelId,
+                        apiModelName = modelId,
+                        isPrimary = saved.models.isEmpty(),
+                    ),
+                )
+            }
             ClawApplication.appViewModelInstance.updateAgentConfig()
             ClawApplication.appViewModelInstance.initAgent()
             ClawApplication.appViewModelInstance.afterInit()

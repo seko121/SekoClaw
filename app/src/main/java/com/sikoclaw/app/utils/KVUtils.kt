@@ -144,6 +144,37 @@ object KVUtils {
 
     fun setGuideShown(shown: Boolean) = putBoolean(KEY_GUIDE_SHOWN, shown)
 
+    private const val KEY_OCTOBOT_DEPLOYED = "KEY_OCTOBOT_DEPLOYED"
+    private const val KEY_OCTOBOT_WAKE_SENT = "KEY_OCTOBOT_WAKE_SENT"
+    private const val KEY_OCTOBOT_FIRST_WAKE_CONTEXT = "KEY_OCTOBOT_FIRST_WAKE_CONTEXT"
+
+    fun isOctoBotDeployed(): Boolean = getBoolean(KEY_OCTOBOT_DEPLOYED, false)
+    fun markOctoBotDeployed() {
+        putBoolean(KEY_OCTOBOT_DEPLOYED, true)
+        setGuideShown(true)
+        sync()
+    }
+
+    /** Atomically claims the one-time first-wake message before navigation. */
+    @Synchronized
+    fun claimFirstWakeMessage(): Boolean {
+        if (getBoolean(KEY_OCTOBOT_WAKE_SENT, false)) return false
+        putBoolean(KEY_OCTOBOT_WAKE_SENT, true)
+        putBoolean(KEY_OCTOBOT_FIRST_WAKE_CONTEXT, true)
+        sync()
+        return true
+    }
+
+    @Synchronized
+    fun consumeFirstWakeContext(): Boolean {
+        val pending = getBoolean(KEY_OCTOBOT_FIRST_WAKE_CONTEXT, false)
+        if (pending) {
+            putBoolean(KEY_OCTOBOT_FIRST_WAKE_CONTEXT, false)
+            sync()
+        }
+        return pending
+    }
+
     // ==================== Discord Bot Config ====================
     fun getDiscordBotToken(): String = getString(KEY_DISCORD_BOT_TOKEN, "")
     fun setDiscordBotToken(value: String) = putString(KEY_DISCORD_BOT_TOKEN, value)
@@ -359,6 +390,11 @@ object KVUtils {
 
     /** Returns true if a cloud default model is configured (model + API key both present). */
     fun hasDefaultCloudModel(): Boolean {
+        runCatching {
+            com.sikoclaw.app.agent.llm.MultiProviderStore.selectedRouting().firstOrNull()
+        }.getOrNull()?.let { (model, provider) ->
+            if (model.apiModelName.isNotBlank() && (!provider.requiresApiKey || com.sikoclaw.app.agent.llm.MultiProviderStore.apiKey(provider.id).isNotBlank())) return true
+        }
         val model = getDefaultCloudModel()
         val provider = getDefaultCloudProvider().ifEmpty { "OPENAI" }
         val apiKey = getApiKeyForProvider(provider).ifEmpty { getLlmApiKey() }
@@ -367,7 +403,8 @@ object KVUtils {
 
     /** Returns true if LLM is configured (API key, base URL, or local model path is non-empty) */
     fun hasLlmConfig(): Boolean =
-        getLlmApiKey().isNotEmpty() || getLlmBaseUrl().isNotEmpty() || getLocalModelPath().isNotEmpty()
+        runCatching { com.sikoclaw.app.agent.llm.MultiProviderStore.selectedRouting().isNotEmpty() }.getOrDefault(false) ||
+            getLlmApiKey().isNotEmpty() || getLlmBaseUrl().isNotEmpty() || getLocalModelPath().isNotEmpty()
 
     // ==================== Global Prompt (#45) ====================
     // User-defined persistent instructions prepended to every system prompt.
@@ -389,14 +426,23 @@ object KVUtils {
     fun setUserMemoryPrompt(value: String) = putString(KEY_USER_MEMORY_PROMPT, value.trim())
     fun getUserPrompt(): String = getString(KEY_USER_PROMPT, "")
     fun setUserPrompt(value: String) = putString(KEY_USER_PROMPT, value.trim())
-    fun getSoulPrompt(): String = getString(KEY_SOUL_PROMPT, "")
+    fun getSoulPrompt(): String = getString(KEY_SOUL_PROMPT, com.sikoclaw.app.agent.AgentPromptDefaults.soul)
     fun setSoulPrompt(value: String) = putString(KEY_SOUL_PROMPT, value.trim())
 
     fun isToolEnabled(name: String): Boolean = getBoolean("TOOL_ENABLED_$name", true)
     fun setToolEnabled(name: String, enabled: Boolean) = putBoolean("TOOL_ENABLED_$name", enabled)
 
+    fun isPluginEnabled(id: String): Boolean = getBoolean("PLUGIN_ENABLED_$id", true)
+    fun setPluginEnabled(id: String, enabled: Boolean) = putBoolean("PLUGIN_ENABLED_$id", enabled)
+    fun isAgentControlHaloEnabled(): Boolean = getBoolean("AGENT_CONTROL_HALO", true)
+    fun setAgentControlHaloEnabled(enabled: Boolean) = putBoolean("AGENT_CONTROL_HALO", enabled)
+    fun isVirtualPointerEnabled(): Boolean = getBoolean("VIRTUAL_POINTER", true)
+    fun setVirtualPointerEnabled(enabled: Boolean) = putBoolean("VIRTUAL_POINTER", enabled)
+    fun getLastBrowserUrl(): String = getString("LAST_BROWSER_URL", "https://www.google.com")
+    fun setLastBrowserUrl(url: String) = putString("LAST_BROWSER_URL", url)
+
     // ==================== Custom Local Model URL (#36) ====================
-    // Advanced: lets user point Siko Claw at a custom .litertlm download URL
+    // Advanced: lets user point OctoBot at a custom .litertlm download URL
     // (e.g. self-hosted, HuggingFace mirrors) instead of only the built-in catalog.
     // Empty string = no custom model. fileName is derived from URL last segment.
 

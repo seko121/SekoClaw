@@ -229,6 +229,8 @@
 # ============================================================
 -dontwarn kotlinx.coroutines.**
 -keep class kotlinx.coroutines.** { *; }
+-keep class com.sikoclaw.app.linux.** { *; }
+-dontwarn io.ktor.**
 -dontwarn kotlin.**
 
 # ============================================================

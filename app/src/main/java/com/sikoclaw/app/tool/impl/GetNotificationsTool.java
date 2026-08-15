@@ -52,6 +52,9 @@ public class GetNotificationsTool extends BaseTool {
 
     @Override
     public ToolResult execute(Map<String, Object> params) {
+        if (!com.sikoclaw.app.agent.services.AgentDeviceServices.INSTANCE.notificationsEnabled()) {
+            return ToolResult.error("Read notifications is disabled in Agent settings.");
+        }
         if (!ClawNotificationListener.isConnected()) {
             return ToolResult.error("Notification Access is not enabled. Ask the user to enable it in Settings.");
         }
@@ -65,8 +68,10 @@ public class GetNotificationsTool extends BaseTool {
             StringBuilder sb = new StringBuilder();
             int count = 0;
             for (StatusBarNotification sbn : notifications) {
-                // Skip Siko Claw's own notifications
+                // Skip OctoBot's own notifications
                 if ("com.sikoclaw.app".equals(sbn.getPackageName())) continue;
+                if (!com.sikoclaw.app.agent.services.AgentDeviceServices.INSTANCE
+                        .notificationPackageAllowed(sbn.getPackageName())) continue;
 
                 Notification notif = sbn.getNotification();
                 if (notif == null || notif.extras == null) continue;
@@ -108,7 +113,7 @@ public class GetNotificationsTool extends BaseTool {
             }
 
             if (count == 0) {
-                return ToolResult.success("No active notifications (only Siko Claw system notifications present).");
+                return ToolResult.success("No active notifications (only OctoBot system notifications present).");
             }
 
             XLog.d(TAG, "Read " + count + " notifications");

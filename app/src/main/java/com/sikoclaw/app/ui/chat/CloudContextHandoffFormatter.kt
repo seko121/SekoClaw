@@ -21,7 +21,7 @@ object CloudContextHandoffFormatter {
             when (message.role) {
                 ChatMessage.Role.USER -> "User: $content"
                 ChatMessage.Role.ASSISTANT -> "Assistant: $content"
-                ChatMessage.Role.SYSTEM, ChatMessage.Role.TOOL_GROUP -> null
+                ChatMessage.Role.REASONING, ChatMessage.Role.SYSTEM, ChatMessage.Role.TOOL_GROUP -> null
             }
         }
     }

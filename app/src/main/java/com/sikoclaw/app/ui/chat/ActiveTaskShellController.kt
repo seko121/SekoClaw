@@ -59,6 +59,7 @@ class ActiveTaskShellController(
         var requestedTaskStop = false
         if (appViewModel.isTaskRunning()) {
             appViewModel.stopTask()
+            com.sikoclaw.app.service.AgentControlSession.stop()
             requestedTaskStop = true
         }
 

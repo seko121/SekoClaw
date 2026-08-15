@@ -10,7 +10,7 @@ import com.sikoclaw.app.utils.XLog
 
 /**
  * Boot broadcast receiver retained for future restart hooks.
- * Siko Claw no longer starts a persistent foreground notification on boot.
+ * OctoBot no longer starts a persistent foreground notification on boot.
  */
 class BootReceiver : BroadcastReceiver() {
 

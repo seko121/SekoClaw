@@ -10,6 +10,7 @@ pluginManagement {
         mavenCentral()
         gradlePluginPortal()
         maven(url = "https://jitpack.io")
+        maven(url = "https://maven.mozilla.org/maven2/")
     }
 }
 plugins {
@@ -21,9 +22,10 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         maven(url = "https://jitpack.io")
+        maven(url = "https://maven.mozilla.org/maven2/")
     }
 }
 
-rootProject.name = "Siko Claw"
+rootProject.name = "OctoBot"
 include(":app")
  

@@ -36,7 +36,7 @@ object ExternalAutomationEntrypoint {
                 returnAction = request.returnAction,
                 requestId = request.requestId,
                 status = ExternalAutomationContract.STATUS_REJECTED,
-                error = "External Automation is disabled in Siko Claw Settings.",
+                error = "External Automation is disabled in OctoBot Settings.",
                 returnPackage = request.returnPackage,
                 mode = request.mode,
             )
@@ -49,7 +49,7 @@ object ExternalAutomationEntrypoint {
                 returnAction = request.returnAction,
                 requestId = request.requestId,
                 status = ExternalAutomationContract.STATUS_REJECTED,
-                error = "Another Siko Claw task is already running.",
+                error = "Another OctoBot task is already running.",
                 returnPackage = request.returnPackage,
                 mode = request.mode,
             )

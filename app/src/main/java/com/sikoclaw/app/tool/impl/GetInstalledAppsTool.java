@@ -3,10 +3,6 @@
 
 package com.sikoclaw.app.tool.impl;
 
-import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.content.pm.ResolveInfo;
-
 import com.sikoclaw.app.ClawApplication;
 import com.sikoclaw.app.R;
 import com.sikoclaw.app.tool.BaseTool;
@@ -57,19 +53,15 @@ public class GetInstalledAppsTool extends BaseTool {
         String keyword = optionalString(params, "keyword", "");
 
         try {
-            PackageManager pm = ClawApplication.Companion.getInstance().getPackageManager();
-            Intent mainIntent = new Intent(Intent.ACTION_MAIN, null);
-            mainIntent.addCategory(Intent.CATEGORY_LAUNCHER);
-
-            List<ResolveInfo> resolveInfos = pm.queryIntentActivities(mainIntent, 0);
-            if (resolveInfos == null || resolveInfos.isEmpty()) {
+            List<AppInventoryCache.Entry> resolveInfos = AppInventoryCache.apps(ClawApplication.Companion.getInstance());
+            if (resolveInfos.isEmpty()) {
                 return ToolResult.error("No installed apps found");
             }
 
             List<String> appList = new ArrayList<>();
-            for (ResolveInfo info : resolveInfos) {
-                String appName = info.loadLabel(pm).toString();
-                String packageName = info.activityInfo.packageName;
+            for (AppInventoryCache.Entry info : resolveInfos) {
+                String appName = info.label;
+                String packageName = info.packageName;
 
                 if (!keyword.isEmpty()) {
                     if (!appName.toLowerCase().contains(keyword.toLowerCase())

@@ -31,10 +31,14 @@ object PromptUtils {
         val userPrompt = KVUtils.getUserPrompt()
         val soul = KVUtils.getSoulPrompt()
         val custom = buildString {
+            if (KVUtils.consumeFirstWakeContext()) append(AgentPromptDefaults.firstWake).append("\n\n")
             if (soul.isNotBlank()) append("SOUL / agent identity:\n$soul\n\n")
             if (userPrompt.isNotBlank()) append("USER PROMPT / standing instructions:\n$userPrompt\n\n")
-            if (userMemory.isNotBlank()) append("USER MEMORY (stable facts and preferences):\n$userMemory\n\n")
+            val structuredMemory = com.sikoclaw.app.agent.memory.KaiMemoryStore.promptBlock()
+            if (userMemory.isNotBlank() && com.sikoclaw.app.agent.memory.KaiMemoryStore.isEnabled()) append("USER MEMORY (legacy stable facts and preferences):\n$userMemory\n\n")
+            if (structuredMemory.isNotBlank()) append("AGENT MEMORIES:\n$structuredMemory\n\n")
             if (global.isNotBlank()) append("$PREFIX_HEADER\n$global\n\n")
+            append(AgentPromptDefaults.memoryPolicy).append("\n\n")
             append(com.sikoclaw.app.agent.skill.UserSkillStore.promptBlock())
             val builtInSkills = com.sikoclaw.app.agent.skill.SkillRegistry.getAll()
                 .filter { KVUtils.getBoolean("SKILL_ENABLED_${it.id}", true) }
@@ -48,16 +52,24 @@ object PromptUtils {
             if (enabledTools.isNotEmpty()) {
                 append("AVAILABLE TOOLS (call them directly when they match the request):\n")
                 enabledTools.forEach { tool ->
-                    append("- ${tool.getName()}: ${tool.getDescription().lineSequence().firstOrNull().orEmpty()}\n")
+                    val params = tool.getParameters().joinToString(", ") { parameter ->
+                        "${parameter.name}${if (parameter.isRequired) " (required)" else ""}: ${parameter.type}"
+                    }
+                    val approval = tool.getName() in setOf(
+                        "send_message", "draft_sms", "make_call", "linux_sandbox", "download_file",
+                        "generate_image", "generate_speech", "create_pdf", "create_docx", "create_xlsx", "create_pptx",
+                    )
+                    append("- ${tool.getName()}: ${tool.getDescription().lineSequence().firstOrNull().orEmpty()}")
+                    if (params.isNotBlank()) append(" Inputs: $params.")
+                    append(if (approval) " Approval: confirm before sensitive, costly, install, send, or destructive actions." else " Approval: normal read-only use needs no extra confirmation.")
+                    append(" Example: call ${tool.getName()} only when its stated capability directly matches the request.\n")
                 }
                 append("Use the smallest suitable tool or skill. Report tool progress honestly, inspect results, and never claim success before a successful result. Skills are reusable procedures; tools perform actions.\n\n")
             }
             append("BUILT-IN WORK ENVIRONMENT:\n")
             append("- For current or uncertain information, use web_search in the background and base the answer on the returned sources.\n")
             append("- For a requested direct HTTPS file, use download_file and report the real saved path.\n")
-            append("- You have an internal terminal. Use environment=android for lightweight device-side shell work.\n")
-            append("- You also have bundled isolated Alpine Linux on supported ARM64 phones. Use environment=linux for Linux commands and development utilities.\n")
-            append("- Alpine uses apk. If Git is needed and missing, run: apk update && apk add git ca-certificates. Install other packages only when the task needs them.\n")
+            append("- Ask for explicit user approval before destructive file operations, downloading and executing scripts, shared-storage access, opening ports, or long-running services.\n")
             append("- Inspect command exit status and output. Never say a search, download, package install, or command succeeded until its tool result confirms success.\n")
             append("- Do not run destructive commands or replace the Linux distribution without the user's explicit request.\n\n")
             append("SKILL AND TOOL USAGE RULES:\n")
@@ -67,7 +79,8 @@ object PromptUtils {
             append("4. Show concise live progress while thinking, searching, running commands, or using tools.\n")
             append("5. If a successful multi-step workflow will likely be reused, save a generalized version with create_skill. Exclude secrets and one-time values.\n")
             append("6. If no skill fits, solve the task with available tools and optionally create a skill only after the workflow succeeds.\n\n")
-            if (isNotBlank()) append("When the user reveals a durable preference or important stable fact, use update_agent_memory. Never store passwords, API keys, payment data, or one-time details.\n\n")
+            append("VISIBLE RESPONSE FORMAT:\nKeep private reasoning separate from the final answer. Always provide a user-visible final response. When several short messages are clearer than one long message, separate them with the exact marker <message-break>. Do not use that marker inside code.\n\n")
+            if (isNotBlank()) append("Memory writes must follow the MEMORY POLICY above and should be acknowledged briefly after the tool succeeds.\n\n")
         }
         if (custom.isBlank()) {
             XLog.d(TAG, "applyGlobalPrompt: no global prompt set, returning base (${basePrompt.length} chars)")

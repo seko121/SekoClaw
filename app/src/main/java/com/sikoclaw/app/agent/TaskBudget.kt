@@ -11,7 +11,7 @@ import com.sikoclaw.app.utils.XLog
  *
  * Architecture reference:
  * - AgentBudget: soft 90% warning + hard 100% kill
- * - Adapted for Siko Claw: configurable via KVUtils settings
+ * - Adapted for OctoBot: configurable via KVUtils settings
  */
 class TaskBudget(
     val maxTokens: Int,

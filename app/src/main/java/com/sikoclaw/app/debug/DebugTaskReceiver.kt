@@ -277,6 +277,18 @@ class DebugTaskReceiver : BroadcastReceiver() {
                     )
                     breadcrumb(context, "support build_debug_report path=${output.absolutePath} bytes=${output.length()}")
                 }
+                "provider_persistence_test" -> {
+                    val id = "debug-persistence-${System.currentTimeMillis()}"
+                    val provider = com.sikoclaw.app.agent.llm.ApiProviderConfig(
+                        id = id,
+                        name = "Persistence test",
+                        baseUrl = "https://example.invalid/v1",
+                    )
+                    val result = com.sikoclaw.app.agent.llm.MultiProviderStore.saveProvider(provider)
+                    val verified = com.sikoclaw.app.agent.llm.MultiProviderStore.state().providers.any { it.id == id }
+                    breadcrumb(context, "provider_persistence_test success=${result.success} verified=$verified message=${result.message}")
+                    if (result.success && verified) com.sikoclaw.app.agent.llm.MultiProviderStore.deleteProvider(id)
+                }
                 else -> {
                     XLog.w("DebugTaskReceiver", "Unknown support_action=$action")
                     breadcrumb(context, "support unknown action=$action")
